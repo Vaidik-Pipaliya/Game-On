@@ -243,6 +243,14 @@ class MenuTests(BarFixtures, TestCase):
         self.assertContains(public, "Sold out today")
         self.assertContains(public, "Gold 10%")
 
+    def test_public_menu_shows_picture_or_icon_and_veg_mark(self):
+        self.burger.image_url = "https://example.com/burger.jpg"
+        self.burger.save()
+        response = self.client.get(reverse("cafe"))
+        self.assertContains(response, 'src="https://example.com/burger.jpg"')
+        self.assertContains(response, "100% vegetarian kitchen")
+        self.assertContains(response, "local_bar")  # Beer has no picture: bar icon instead
+
     def test_front_desk_cannot_edit_the_menu(self):
         self.client.force_login(User.objects.create(username="d", email="d@example.com", role="front_desk"))
         self.assertEqual(self.client.get(reverse("bar_menu")).status_code, 403)

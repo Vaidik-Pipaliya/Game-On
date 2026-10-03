@@ -81,11 +81,11 @@ MENU = [
     ("Whisky (30 ml)", "Drinks", 35000, "bar"),
     ("Mojito", "Drinks", 22000, "bar"),
     ("Veg Sandwich", "Snacks", 12000, "kitchen"),
-    ("Chicken Burger", "Snacks", 18000, "kitchen"),
+    ("Aloo Tikki Burger", "Snacks", 18000, "kitchen"),
     ("French Fries", "Snacks", 10000, "kitchen"),
     ("Paneer Tikka", "Snacks", 22000, "kitchen"),
     ("Masala Maggi", "Snacks", 9000, "kitchen"),
-    ("Butter Chicken Meal", "Meals", 32000, "kitchen"),
+    ("Paneer Butter Masala Meal", "Meals", 32000, "kitchen"),
     ("Veg Thali", "Meals", 25000, "kitchen"),
 ]
 

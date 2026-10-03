@@ -14,16 +14,17 @@ class MenuItemForm(BootstrapFormMixin, forms.ModelForm):
 
     class Meta:
         model = MenuItem
-        fields = ["name", "category", "station", "is_available"]
-        labels = {"station": "Made at", "is_available": "Available now"}
-        help_texts = {"category": "For example Coffee, Snacks, Cold drinks", "station": "Which ticket screen gets the order"}
+        fields = ["name", "category", "station", "is_available", "image_url"]
+        labels = {"station": "Made at", "is_available": "Available now", "image_url": "Picture link"}
+        help_texts = {"category": "For example Coffee, Snacks, Cold drinks", "station": "Which ticket screen gets the order",
+                      "image_url": "Optional. A direct link to a picture (.jpg or .png)"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["category"].widget.attrs["list"] = "menu-categories"
         if self.instance.pk:
             self.fields["price_rupees"].initial = Decimal(self.instance.price_paise) / 100
-        self.order_fields(["name", "category", "price_rupees", "station", "is_available"])
+        self.order_fields(["name", "category", "price_rupees", "station", "image_url", "is_available"])
 
     def clean_name(self):
         name = self.cleaned_data["name"].strip()

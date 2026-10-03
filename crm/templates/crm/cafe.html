@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load money %}
 {% block title %}Cafe and bar menu | Champions Club{% endblock %}
-{% block description %}The Champions Club cafe and bar: coffee, snacks and drinks after your match, with member discounts.{% endblock %}
+{% block description %}The Champions Club cafe: a pure vegetarian kitchen with coffee, snacks, meals and drinks, and member discounts.{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
@@ -9,7 +9,16 @@
     <h1 class="page-title">Menu</h1>
     <p class="page-sub">Order at the counter or from your table. Prices include taxes.</p>
   </div>
+  <span class="chip chip-ok"><span class="veg-mark" aria-hidden="true"></span>100% vegetarian kitchen</span>
 </div>
+
+{% if menu|length > 1 %}
+<div class="panel panel-pad mb-3">
+  <div class="seg">
+    {% for category, items in menu %}<a href="#cat-{{ forloop.counter }}">{{ category }}</a>{% endfor %}
+  </div>
+</div>
+{% endif %}
 
 {% if discounts %}
 <div class="callout callout-info mb-4">
@@ -20,23 +29,24 @@
 </div>
 {% endif %}
 
-<div class="row g-4">
-  {% for category, items in menu %}
-  <div class="col-md-6 col-xl-4">
-    <div class="panel panel-pad h-100">
-      <h2 class="panel-title mb-3">{{ category }}</h2>
-      <ul class="list-unstyled mb-0">
-        {% for item in items %}
-        <li class="d-flex justify-content-between align-items-baseline gap-3 py-2 {% if not forloop.last %}border-bottom{% endif %} {% if not item.is_available %}text-muted{% endif %}">
-          <span>{{ item.name }}{% if not item.is_available %} <span class="chip chip-neutral">Sold out today</span>{% endif %}</span>
-          <strong class="text-nowrap">{{ item.price_paise|rupees }}</strong>
-        </li>
-        {% endfor %}
-      </ul>
-    </div>
+{% for category, items in menu %}
+<h2 class="panel-title mb-3 mt-4" id="cat-{{ forloop.counter }}" style="scroll-margin-top:5rem">{{ category }}</h2>
+<div class="row g-3">
+  {% for item in items %}
+  <div class="col-6 col-md-4 col-xl-3">
+    <article class="product menu-card {% if not item.is_available %}is-sold-out{% endif %}">
+      <div class="product-img">
+        {% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.name }}" loading="lazy" referrerpolicy="no-referrer">
+        {% else %}<span class="msym" aria-hidden="true">{% if item.station == "bar" %}local_bar{% elif category == "Drinks" %}local_cafe{% elif category == "Meals" %}restaurant{% else %}lunch_dining{% endif %}</span>{% endif %}
+        {% if not item.is_available %}<span class="sold-out-flag">Sold out today</span>{% endif %}
+      </div>
+      <h3 class="h6 mb-1 d-flex gap-2 align-items-start"><span class="veg-mark mt-1" title="Vegetarian" aria-label="Vegetarian"></span>{{ item.name }}</h3>
+      <div class="product-price mt-auto">{{ item.price_paise|rupees }}</div>
+    </article>
   </div>
-  {% empty %}
-  <div class="col-12"><div class="panel panel-pad text-center text-muted">The menu is being updated. Please ask at the counter.</div></div>
   {% endfor %}
 </div>
+{% empty %}
+<div class="panel panel-pad text-center text-muted">The menu is being updated. Please ask at the counter.</div>
+{% endfor %}
 {% endblock %}

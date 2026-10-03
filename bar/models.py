@@ -15,6 +15,8 @@ class MenuItem(models.Model):
     price_paise = models.PositiveIntegerField()
     station = models.CharField(max_length=10, choices=Station.choices)
     is_available = models.BooleanField(default=True)
+    # A picture link. Optional: with no link the menu shows a category icon.
+    image_url = models.URLField(blank=True, default="", db_default="")
 
     def __str__(self):
         return self.name

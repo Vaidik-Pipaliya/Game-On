@@ -378,3 +378,13 @@ table.cgrid { border-collapse: separate; border-spacing: 0; font-size: .75rem; w
 .product-img { aspect-ratio: 4 / 3; margin: -1.1rem -1.25rem 1rem; border-radius: 10px 10px 0 0; overflow: hidden; background: var(--court-100); display: grid; place-items: center; }
 .product-img img { width: 100%; height: 100%; object-fit: cover; }
 .product-img .msym { font-size: 56px; color: var(--court-700); opacity: .6; }
+
+/* ---------- Cafe menu cards (reuse the shop's .product card) ---------- */
+.veg-mark { width: 14px; height: 14px; border: 1.5px solid #1a8a3a; border-radius: 2px; display: inline-grid; place-items: center; flex: none; }
+.veg-mark::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #1a8a3a; }
+.menu-card .product-img { position: relative; }
+.menu-card .product-price { font-size: 1.35rem; }
+.menu-card.is-sold-out .product-img img, .menu-card.is-sold-out .product-img .msym { opacity: .35; }
+.menu-card.is-sold-out .product-price { color: var(--ink-600); }
+.sold-out-flag { position: absolute; top: .6rem; left: .6rem; background: var(--ink-900); color: #fff; font-size: .75rem; font-weight: 700; padding: .2rem .55rem; border-radius: 999px; }
+@media (max-width: 575.98px) { .menu-card { padding: .9rem; } .menu-card .product-img { margin: -.9rem -.9rem .75rem; } }
