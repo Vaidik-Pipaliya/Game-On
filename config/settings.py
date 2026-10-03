@@ -71,6 +71,9 @@ DATABASES = {
         "PASSWORD": os.environ.get("DB_PASSWORD", ""),
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", "5432"),
+        # Neon (cloud Postgres) needs DB_SSLMODE=require; local Postgres can leave it as "prefer".
+        "OPTIONS": {"sslmode": os.environ.get("DB_SSLMODE", "prefer")},
+        "CONN_MAX_AGE": 60,  # reuse connections between requests instead of reconnecting each time
     }
 }
 
@@ -133,5 +136,14 @@ FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
 
 STATIC_URL = "static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"  # `collectstatic` copies admin CSS/JS here for production
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Production hardening: on when DEBUG is off (the deployed site runs behind HTTPS).
+CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o]
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # Render/Railway terminate HTTPS at a proxy
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 3600

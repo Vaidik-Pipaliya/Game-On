@@ -7,3 +7,4 @@ firebase-service-account.json
 db.sqlite3
 
 *firebase-adminsdk*.json
+staticfiles/
