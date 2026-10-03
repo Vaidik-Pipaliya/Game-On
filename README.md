@@ -20,15 +20,16 @@ Built with Django, PostgreSQL, Bootstrap and a little JavaScript: simple, standa
 | Area | What it does |
 |---|---|
 | **Court booking** | Live court grid (courts × 30-minute starts), 1-hour sessions, member or walk-in, price by plan, free hours, max 2 bookings per member per day, cancel with a 24 h refund window, Friday social play with a capacity |
+| **Member self-service** | Members book, pay and cancel their own courts online: 5-minute database-enforced slot hold while paying, pay online or at the club, **waitlist** for full slots (the first in line gets a 30-minute hold when a slot frees up) |
 | **Members** | Front-desk sign-up, Gold / Silver / Junior plans (Junior needs an adult guardian), automatic expiry status, renewal with payment, reminders at 14 / 7 / 1 days, search by name or phone, profile with history |
 | **Shop** | Products with sizes, counter sales and online orders (pickup or delivery) from **the same stock**, member discount, low-stock alerts, restocking |
 | **Bar and cafe** | Tables and tabs, kitchen and bar ticket screens, **automatic member discount line**, split payment across cash / card / UPI, shifts with cash check, day report |
 | **Public website** | Club info, plans comparison, free courts for the week, shop, trial booking, enquiry form with spam protection |
 | **Leads** | Every enquiry becomes a lead, auto-assigned and emailed, status pipeline, overdue follow-ups, one-click "register as member" |
 | **Money** | One append-only ledger; owner dashboard (today / week / month vs previous), revenue by source × method, amounts owed, analytics (trend, utilisation, peak hours), CSV export |
-| **Payments** | Cash / card / UPI at the desk, Razorpay (test mode) online with signature check and webhook |
+| **Payments** | Cash / card / UPI at the desk, Razorpay (test mode) online with signature check, webhook and **refunds through Razorpay's refund API** (remembered in the cancellation transaction, retryable) |
 | **Messages** | WhatsApp templates (Meta Cloud API) with email fallback, delivery log, retries, reminders 2 h before play |
-| **Admin side** | GST invoices (CGST/SGST), monthly GST summary, employees, payroll, leave requests and approval |
+| **Admin side** | GST invoices (CGST/SGST), monthly GST summary, employees, payroll, leave requests and approval, **append-only audit log** (refunds, stock, payroll, leave, role changes) |
 | **Login** | Google sign-in through Firebase; roles: owner, front desk, bar staff, shop staff, member |
 
 ## What makes it technically strong
@@ -45,7 +46,7 @@ Each of these is a rule that **cannot be broken by a race, a double-click or a r
 8. **Messages never break bookings.** WhatsApp/email go out via `transaction.on_commit`; every attempt is logged, and failures fall back to email and can be retried.
 9. **Database-level rules elsewhere too:** one open tab per table, one open shift per person, unique payroll per employee per month, unique invoice numbers with retry.
 
-**257 automated tests** (Django `TestCase`, real PostgreSQL, real threads for the concurrency tests).
+**322 automated tests** (Django `TestCase`, real PostgreSQL, real threads for the concurrency tests).
 
 ## Architecture
 
@@ -141,9 +142,9 @@ Demo script with the strongest moments first: [docs/DEMO.md](docs/DEMO.md). Depl
 
 ## Limitations and future work
 
-- **Online refunds** are recorded in the ledger but the money is returned from the Razorpay dashboard (no refund API call yet).
-- **No 5-minute payment hold:** an online booking is confirmed and marked unpaid until Razorpay confirms; an abandoned payment leaves an unpaid booking for staff to settle or cancel.
-- **Member self-service booking** isn't built; members book through the front desk (the public site shows availability and takes trial bookings).
+- **Staff-created online bookings** (customer paying at the desk with Razorpay) are confirmed and marked unpaid until Razorpay confirms; only the member portal uses the 5-minute hold.
+- **Refunds are full refunds only**, and only for payments made through Razorpay; desk payments are handed back by the club.
+- **Waitlist offers are emailed**, not sent on WhatsApp (that needs one more approved Meta template).
 - **GST summary** covers invoices only; counter, bar and court prices are treated as GST-inclusive and not split out.
 - **Payroll** is a flat 12% deduction; no PF/ESI/TDS filing (out of scope in the PRD).
 - **Rate limiting** uses Django's in-memory cache, which on Vercel is per function instance; a shared cache (e.g. Upstash Redis) would make it exact.
@@ -151,5 +152,5 @@ Demo script with the strongest moments first: [docs/DEMO.md](docs/DEMO.md). Depl
 - **Hosting is on free plans** (Vercel Hobby is for non-commercial use, Neon free has limited storage); a real club should move to paid plans.
 - **Kitchen screen** refreshes every 10 s instead of pushing updates (no websockets).
 - **Bar shift takings** assume one till (the ledger has no staff column).
-- No audit log table for overrides (the ledger, decided_by on leave and created_by on bookings cover the main money and decisions).
-- Next steps: member portal booking with Razorpay hold, waitlist, recurring bookings, refund API, audit log, PWA for staff tablets.
+- **Audit log** covers refunds, stock restocks, order/tab cancellations, payroll, leave decisions, invoice payments and role changes; there are no price or daily-limit overrides to log yet.
+- Next steps: recurring weekly bookings, WhatsApp waitlist offers, partial refunds, PWA for staff tablets.

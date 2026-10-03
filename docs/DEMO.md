@@ -17,7 +17,7 @@ Before the demo: `manage.py seed_demo` has run, you're signed in as **owner**, a
 | 2:40 | Owner dashboard | "Every number is a sum of an append-only ledger, so it always matches the daily close: revenue by courts, shop, bar, memberships × cash, card, UPI, online; what we're owed; utilisation and peak hours from pandas." |
 | 3:10 | Public site → Book a trial / Contact | "A visitor books a trial; it becomes a lead, auto-assigned and emailed after commit. Hidden honeypot + rate limit stop spam without a CAPTCHA." |
 | 3:30 | Messages log | "WhatsApp is sent only after the booking commits; every attempt is logged; failures fall back to email and can be retried." |
-| 3:45 | Close | "257 tests, including real concurrency tests. Simple tools, with the hard rules in the database." |
+| 3:45 | Close | "322 tests, including real concurrency tests. Simple tools, with the hard rules in the database." |
 
 If Razorpay test keys are set: book with **Paid by Online** → pay with UPI `success@razorpay` → the booking shows Paid and the ledger has one online row.
 

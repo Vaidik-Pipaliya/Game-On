@@ -8,4 +8,7 @@ urlpatterns = [
     path("mine/", portal.mine, name="portal_mine"),
     path("<int:pk>/cancel/", portal.cancel, name="portal_cancel"),
     path("<int:pk>/pay/", portal.pay, name="portal_pay"),
+    path("<int:pk>/confirm-hold/", portal.confirm_hold, name="portal_confirm_hold"),
+    path("waitlist/join/", portal.waitlist_join, name="portal_waitlist_join"),
+    path("waitlist/<int:pk>/leave/", portal.waitlist_leave, name="portal_waitlist_leave"),
 ]

@@ -149,3 +149,9 @@
 - `refund_gateway_payment` locks the Payment row and only ever refunds once (`refund_id` is set on success), so retries and double-clicks can't refund twice. Failures keep `refund_error`; the owner dashboard shows "N online refunds waiting" with a Send-now button, and `/cron/retry-refunds/` (daily in vercel.json) retries too.
 - Cash/card/UPI taken at the desk have no Payment row: the club hands those back itself, and nothing calls Razorpay.
 - Full refunds only (a payment is refunded for exactly what it paid).
+
+### Waitlist (PRD BK-15)
+- A member can wait for a *taken* slot (`join_waitlist`: slot must really be taken, max 5 waits per member, a conditional UNIQUE constraint makes a second live entry for the same slot impossible even on a double-click).
+- **An offer is just a held booking**, so it reuses the same database guarantee: when a booking is cancelled, or a hold/offer expires or is declined, `offer_to_waitlist` makes a **30-minute hold** for the first person in line (`book_court(hold_for=...)`: always held, even for a free session, so nobody is booked behind their back). Nobody else can take the slot meanwhile (exclusion constraint). Not confirmed in time -> the entry becomes `expired` and the next person is offered; someone who can't take it (daily limit) is skipped. They are emailed, and see it under "My bookings" (Confirm, pay at the club / Pay online / Release).
+- Fixed along the way: `select_for_update` can't lock a row joined through a nullable foreign key (`of=("self",)`), and the clock is passed through the whole chain (not read in the middle) so tests and behaviour are deterministic.
+- Waitlist offers go by email only (a WhatsApp template would need Meta approval).

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Join the waitlist | Champions Club{% endblock %}
+{% block content %}
+<div class="col-lg-5 mx-auto">
+  <h1 class="h3 mb-3">Join the waitlist</h1>
+  {% if error %}<div class="alert alert-danger" role="alert" aria-live="polite">{{ error }} <a href="{% url 'portal_grid' %}">Back to the grid</a>.</div>{% endif %}
+  <div class="bg-white border rounded p-3 mb-3">
+    <div class="h5 mb-1">{{ court.name }} <span class="text-muted">&middot; {{ court.sport.name }}</span></div>
+    <div>{{ start|date:"l j F" }}, {{ start|date:"g:i A" }}</div>
+    <p class="small text-muted mt-2 mb-0">This slot is taken. If it becomes free, we hold it for you for {{ offer_minutes }} minutes and email you. You then confirm it from "My bookings". If you don't, it goes to the next person. You can leave the waitlist any time.</p>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="court" value="{{ court.pk }}">
+    <input type="hidden" name="start" value="{{ raw_start }}">
+    <button class="btn btn-primary btn-lg w-100">Join the waitlist</button>
+    <a href="{% url 'portal_grid' %}" class="btn btn-link w-100 mt-2">Back to the grid</a>
+  </form>
+</div>
+{% endblock %}

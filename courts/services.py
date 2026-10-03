@@ -14,15 +14,17 @@ from finance.models import Method, Source
 from finance.services import DESK_METHODS, record_payment, record_refund, request_gateway_refund
 from members.models import Member
 from members.pricing import price_for
-from notifications.services import notify_booking_after_commit
+from notifications.services import notify_booking_after_commit, send_logged_email
 
-from .models import Booking, Court, SocialSession
+from .models import Booking, Court, SocialSession, WaitlistEntry
 
 SESSION = timedelta(hours=1)
 OPEN_HOUR, CLOSE_HOUR = 6, 22  # club-local opening hours (assumed; a setting later)
 DEFAULT_DAILY_LIMIT = 2  # for members whose plan limit no longer applies (expired)
 CANCEL_WINDOW = timedelta(hours=24)  # full refund if cancelled at least this long before the session
 HOLD_FOR = timedelta(minutes=5)  # how long a slot is reserved while an online payment completes
+OFFER_HOLD_FOR = timedelta(minutes=30)  # how long a waitlisted member has to confirm an offered slot
+MAX_WAITLIST_PER_MEMBER = 5
 FRIDAY = 4
 OVERLAP_CONSTRAINT = "no_overlapping_court_bookings"
 
@@ -115,19 +117,28 @@ def release_expired_holds(now=None):
     """Free slots whose 5-minute hold ran out. Runs whenever availability or a booking is looked at,
     so an expired hold never blocks anyone, and a cron job isn't needed for correctness."""
     now = now or timezone.now()
-    return Booking.objects.filter(status=Booking.Status.HELD, hold_expires_at__lte=now).update(
-        status=Booking.Status.CANCELLED
-    )
+    expired = list(Booking.objects.filter(status=Booking.Status.HELD, hold_expires_at__lte=now)
+                   .values_list("pk", "court_id", "start", "kind"))
+    if not expired:
+        return 0
+    ids = [pk for pk, *_ in expired]
+    Booking.objects.filter(pk__in=ids, status=Booking.Status.HELD).update(status=Booking.Status.CANCELLED)
+    WaitlistEntry.objects.filter(booking_id__in=ids, status=WaitlistEntry.Status.OFFERED).update(status=WaitlistEntry.Status.EXPIRED)
+    for _, court_id, start, kind in expired:
+        if kind == Booking.Kind.EXCLUSIVE:
+            offer_to_waitlist(Court.objects.get(pk=court_id), start, now)  # next in line gets a turn
+    return len(ids)
 
 
 def book_court(*, court, start, member=None, guest_name="", guest_phone="", payment_method=None,
-               hold=False, created_by=None, now=None):
+               hold=False, hold_for=None, created_by=None, now=None):
     """Book one 60-minute session. Returns the Booking or raises a ValidationError subclass.
 
     payment_method: cash/card/upi records the payment now; "online" leaves it unpaid until
     Razorpay confirms; None means pay later.
     hold=True reserves the slot for 5 minutes (status "held") while an online payment completes;
     it becomes confirmed when the payment arrives (apply_online_payment) or is released if it doesn't.
+    hold_for (a timedelta) is used for waitlist offers: always held, even if free, for that long.
     """
     now = now or timezone.now()
     validate_slot_start(start, now)
@@ -147,12 +158,13 @@ def book_court(*, court, start, member=None, guest_name="", guest_phone="", paym
             _enforce_daily_limit(member, member.current_membership, day)
             price_paise = court_price(court, member, day).amount_paise
         # An overlapping insert raises IntegrityError from the exclusion constraint.
-        held = hold and price_paise > 0  # a free session needs no payment, so it is confirmed at once
+        # An ordinary payment hold is skipped for a free session (nothing to pay), but an offer is always held.
+        held = bool(hold_for) or (hold and price_paise > 0)
         booking = Booking.objects.create(
             court=court, member=member, guest_name=guest_name.strip(), guest_phone=guest_phone.strip(),
             start=start, end=start + SESSION, price_paise=price_paise, created_by=created_by,
             status=Booking.Status.HELD if held else Booking.Status.CONFIRMED,
-            hold_expires_at=now + HOLD_FOR if held else None,
+            hold_expires_at=now + (hold_for or HOLD_FOR) if held else None,
             payment_method=Method.ONLINE if held else "",
         )
         if held:
@@ -213,6 +225,8 @@ def cancel_booking(booking, *, now=None, by=None):
         audit(by, "booking.cancel", booking, f"Cancelled booking #{booking.pk} ({booking.court.name} {booking.start:%d %b %H:%M})",
               refund_paise=refund, price_paise=booking.price_paise, method=booking.payment_method)
         notify_booking_after_commit(booking, "booking_cancelled")
+        if booking.kind == Booking.Kind.EXCLUSIVE:
+            transaction.on_commit(lambda: offer_to_waitlist(booking.court, booking.start, now))
     return CancelResult(booking, refund)
 
 
@@ -328,9 +342,31 @@ def day_bookings(day):
     )
 
 
-def release_hold(booking):
+def release_hold(booking, now=None):
     """The member backed out of paying: free the slot straight away instead of waiting out the 5 minutes."""
-    return bool(Booking.objects.filter(pk=booking.pk, status=Booking.Status.HELD).update(status=Booking.Status.CANCELLED))
+    released = Booking.objects.filter(pk=booking.pk, status=Booking.Status.HELD).update(status=Booking.Status.CANCELLED)
+    if released:
+        WaitlistEntry.objects.filter(booking=booking, status=WaitlistEntry.Status.OFFERED).update(status=WaitlistEntry.Status.EXPIRED)
+        if booking.kind == Booking.Kind.EXCLUSIVE:
+            offer_to_waitlist(booking.court, booking.start, now)
+    return bool(released)
+
+
+def confirm_held_booking(booking, member, now=None):
+    """A held booking (usually a waitlist offer) is confirmed without online payment: pay at the club."""
+    now = now or timezone.now()
+    with transaction.atomic():
+        booking = Booking.objects.select_for_update().get(pk=booking.pk, member=member)
+        if booking.status != Booking.Status.HELD or (booking.hold_expires_at and booking.hold_expires_at <= now):
+            raise ValidationError("This hold has expired. Join the waitlist again or pick another time.")
+        booking.status = Booking.Status.CONFIRMED
+        booking.hold_expires_at = None
+        booking.is_paid = booking.price_paise == 0
+        booking.payment_method = ""
+        booking.save(update_fields=["status", "hold_expires_at", "is_paid", "payment_method"])
+        WaitlistEntry.objects.filter(booking=booking, status=WaitlistEntry.Status.OFFERED).update(status=WaitlistEntry.Status.DONE)
+        notify_booking_after_commit(booking, "booking_confirmed")
+    return booking
 
 
 def apply_online_payment(booking_id, payment):
@@ -366,6 +402,7 @@ def apply_online_payment(booking_id, payment):
         booking.payment_method = Method.ONLINE
         booking.hold_expires_at = None
         booking.save(update_fields=["status", "is_paid", "payment_method", "hold_expires_at"])
+        WaitlistEntry.objects.filter(booking=booking, status=WaitlistEntry.Status.OFFERED).update(status=WaitlistEntry.Status.DONE)
         if already_confirmed:
             return "paid"  # the confirmation message was sent when staff made the booking
         notify_booking_after_commit(booking, "booking_confirmed")
@@ -382,3 +419,81 @@ def _refund_online(booking, payment, reason):
     request_gateway_refund(payment=payment)
     audit(None, "booking.payment_refunded", booking, f"{reason}: booking #{booking.pk}", amount_paise=payment.amount_paise)
     return "refunded"
+
+
+# ---- Waitlist ----
+
+def join_waitlist(member, court, start, now=None):
+    """Queue up for a slot that is currently taken. First come, first served."""
+    now = now or timezone.now()
+    validate_slot_start(start, now)
+    release_expired_holds(now)
+    taken = Booking.objects.filter(
+        court=court, kind=Booking.Kind.EXCLUSIVE, status__in=[Booking.Status.HELD, Booking.Status.CONFIRMED],
+        start__lt=start + SESSION, end__gt=start,
+    ).exists()
+    if not taken:
+        raise ValidationError("That slot is free right now. Book it instead of waiting.")
+    live = [WaitlistEntry.Status.WAITING, WaitlistEntry.Status.OFFERED]
+    if WaitlistEntry.objects.filter(member=member, status__in=live).count() >= MAX_WAITLIST_PER_MEMBER:
+        raise ValidationError(f"You can wait for up to {MAX_WAITLIST_PER_MEMBER} slots at a time. Leave one first.")
+    try:
+        with transaction.atomic():
+            return WaitlistEntry.objects.create(member=member, court=court, start=start)
+    except IntegrityError as error:
+        if "one_live_waitlist_entry_per_slot" not in str(error):
+            raise
+        raise ValidationError("You are already on the waitlist for this slot.") from error
+
+
+def leave_waitlist(entry, member, now=None):
+    """Leave the queue. If an offer was already made to you, that held slot is released and passed on."""
+    with transaction.atomic():
+        # of=("self",): lock only the waitlist row (the joined booking may be NULL, which Postgres can't lock).
+        entry = WaitlistEntry.objects.select_for_update(of=("self",)).select_related("booking").get(pk=entry.pk, member=member)
+        if entry.status not in (WaitlistEntry.Status.WAITING, WaitlistEntry.Status.OFFERED):
+            return False
+        offered = entry.booking if entry.status == WaitlistEntry.Status.OFFERED else None
+        entry.status = WaitlistEntry.Status.LEFT
+        entry.save(update_fields=["status"])
+    if offered:
+        release_hold(offered, now)  # frees the slot and offers it to the next person
+    return True
+
+
+def offer_to_waitlist(court, start, now=None):
+    """A slot just freed up: hold it for the first person waiting and tell them. Returns that entry, or None.
+
+    Someone who can't take it (daily limit reached, membership problem) is skipped and removed from
+    the queue. If the slot is already taken again, the queue keeps waiting.
+    """
+    now = now or timezone.now()
+    if start <= now:
+        return None
+    for entry in WaitlistEntry.objects.filter(court=court, start=start, status=WaitlistEntry.Status.WAITING).select_related("member").order_by("created_at", "pk"):
+        try:
+            hold = book_court(court=court, start=start, member=entry.member, hold_for=OFFER_HOLD_FOR, now=now)
+        except SlotTaken:
+            return None
+        except ValidationError:
+            WaitlistEntry.objects.filter(pk=entry.pk).update(status=WaitlistEntry.Status.LEFT)
+            continue
+        WaitlistEntry.objects.filter(pk=entry.pk).update(status=WaitlistEntry.Status.OFFERED, booking=hold, offered_at=now)
+        entry.refresh_from_db()
+        _tell_waitlisted_member(entry, hold)
+        return entry
+    return None
+
+
+def _tell_waitlisted_member(entry, hold):
+    member = entry.member
+    if not member.email:
+        return  # they will still see the offer under "My bookings"
+    local = timezone.localtime(entry.start)
+    minutes = int(OFFER_HOLD_FOR.total_seconds() // 60)
+    transaction.on_commit(lambda: send_logged_email(
+        to=member.email, member=member, template="waitlist_offer",
+        subject=f"A slot opened up: {entry.court.name}, {local:%a %d %b at %I:%M %p}",
+        body=(f"Hi {member.full_name},\n\n{entry.court.name} on {local:%a %d %b} at {local:%I:%M %p} is free again and we are "
+              f"holding it for you for {minutes} minutes. Open 'My bookings' on the club website to confirm it or pay online.\n"),
+    ))

@@ -15,8 +15,11 @@ from finance.models import Source
 from finance.services import OnlinePaymentUnavailable, start_online_payment
 
 from .forms import parse_local_datetime
-from .models import Booking, Court, Sport
-from .services import HOLD_FOR, book_court, cancel_booking, court_price, grid_for_day, release_hold
+from .models import Booking, Court, Sport, WaitlistEntry
+from .services import (
+    HOLD_FOR, OFFER_HOLD_FOR, book_court, cancel_booking, confirm_held_booking, court_price, grid_for_day,
+    join_waitlist, leave_waitlist, release_hold,
+)
 
 BOOKING_WINDOW_DAYS = 14  # how far ahead members can book
 
@@ -107,7 +110,12 @@ def mine(request, member):
     mine_qs = Booking.objects.filter(member=member).select_related("court").order_by("-start")
     upcoming = [b for b in mine_qs if b.start > now and b.status in (Booking.Status.HELD, Booking.Status.CONFIRMED)]
     past = [b for b in mine_qs if b not in upcoming][:15]
-    return render(request, "courts/portal_mine.html", {"upcoming": sorted(upcoming, key=lambda b: b.start), "past": past, "now": now})
+    waiting = WaitlistEntry.objects.filter(
+        member=member, status=WaitlistEntry.Status.WAITING, start__gt=now
+    ).select_related("court").order_by("start")
+    return render(request, "courts/portal_mine.html", {
+        "upcoming": sorted(upcoming, key=lambda b: b.start), "past": past, "now": now, "waiting": waiting,
+    })
 
 
 def _own_booking(member, pk):
@@ -146,3 +154,52 @@ def pay(request, member, pk):
         messages.error(request, "This booking doesn't need a payment.")
         return redirect("portal_mine")
     return _start_online_payment(request, booking)
+
+
+# ---- Waitlist ----
+
+@member_required
+def waitlist_join(request, member):
+    court = get_object_or_404(Court, pk=request.GET.get("court") or request.POST.get("court"), is_active=True)
+    raw_start = request.GET.get("start") or request.POST.get("start")
+    try:
+        start = parse_local_datetime(raw_start)
+    except ValidationError:
+        messages.error(request, "Pick a time from the grid.")
+        return redirect("portal_grid")
+    error = None
+    if request.method == "POST":
+        try:
+            join_waitlist(member, court, start)
+        except ValidationError as exc:
+            error = exc.messages[0]
+        else:
+            messages.success(request, "You're on the waitlist. If the slot opens up we'll hold it for you and let you know.")
+            return redirect("portal_mine")
+    return render(request, "courts/portal_waitlist.html", {
+        "court": court, "start": start, "raw_start": raw_start, "error": error,
+        "offer_minutes": int(OFFER_HOLD_FOR.total_seconds() // 60),
+    })
+
+
+@member_required
+@require_POST
+def waitlist_leave(request, member, pk):
+    entry = get_object_or_404(WaitlistEntry, pk=pk, member=member)
+    leave_waitlist(entry, member)
+    messages.success(request, "You left the waitlist.")
+    return redirect("portal_mine")
+
+
+@member_required
+@require_POST
+def confirm_hold(request, member, pk):
+    """Accept a held slot (a waitlist offer) and pay at the club."""
+    booking = _own_booking(member, pk)
+    try:
+        confirm_held_booking(booking, member)
+    except ValidationError as error:
+        messages.error(request, error.messages[0])
+    else:
+        messages.success(request, "Booked. See you on court!")
+    return redirect("portal_mine")

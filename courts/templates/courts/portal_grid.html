@@ -15,7 +15,7 @@
   <h1 class="h3 mb-0">Book a court</h1>
   <a href="{% url 'portal_mine' %}" class="btn btn-outline-primary btn-sm">My bookings</a>
 </div>
-<p class="text-muted small">Hi {{ member.full_name }}. Tap a free time to see your price. Each session is one hour and starts every 30 minutes.</p>
+<p class="text-muted small">Hi {{ member.full_name }}. Tap a free time to see your price. Each session is one hour and starts every 30 minutes. A taken slot (&ndash;) can be waitlisted: tap it and we'll hold it for you if it opens up.</p>
 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
   {% if prev_day %}<a class="btn btn-sm btn-outline-secondary" href="?date={{ prev_day|date:'Y-m-d' }}{% if sport %}&amp;sport={{ sport.pk }}{% endif %}" aria-label="Previous day">&larr;</a>{% endif %}
   <strong>{{ day|date:"D j M" }}</strong>
@@ -34,7 +34,7 @@
         {% if cell.state == "free" %}
           <td class="pfree"><a href="{% url 'portal_confirm' %}?court={{ row.court.pk }}&amp;start={{ cell.start|date:'Y-m-d\TH:i' }}" aria-label="Book {{ row.court.name }} at {{ cell.start|date:'g:i A' }}">Book</a></td>
         {% elif cell.state == "past" %}<td class="ppast"></td>
-        {% else %}<td class="ptaken" aria-label="not available">&ndash;</td>{% endif %}
+        {% else %}<td class="ptaken"><a href="{% url 'portal_waitlist_join' %}?court={{ row.court.pk }}&amp;start={{ cell.start|date:'Y-m-d\TH:i' }}" class="text-decoration-none text-muted d-block" style="line-height:44px" aria-label="Taken. Join the waitlist for {{ row.court.name }} at {{ cell.start|date:'g:i A' }}" title="Taken: join the waitlist">&ndash;</a></td>{% endif %}
       {% endfor %}
       </tr>
     {% empty %}<tr><td class="court-col">No courts.</td></tr>{% endfor %}

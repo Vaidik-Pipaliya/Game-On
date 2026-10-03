@@ -101,3 +101,31 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.court} {self.start:%d %b %H:%M}"
+
+
+class WaitlistEntry(models.Model):
+    """A member waiting for a full slot. When it frees up, the first in line is offered a held booking."""
+
+    class Status(models.TextChoices):
+        WAITING = "waiting"
+        OFFERED = "offered"  # a held booking was made for them; they must confirm in time
+        DONE = "done"  # they confirmed the offered booking
+        EXPIRED = "expired"  # the offer ran out, or they declined it
+        LEFT = "left"  # they left the waitlist, or could not be offered the slot
+
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="waitlist")
+    court = models.ForeignKey(Court, on_delete=models.CASCADE)
+    start = models.DateTimeField()
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.WAITING)
+    booking = models.ForeignKey(Booking, null=True, blank=True, on_delete=models.SET_NULL, related_name="waitlist_offers")
+    offered_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            # One live place in the queue per member per slot (joining twice is impossible, even by double-click).
+            models.UniqueConstraint(
+                fields=["member", "court", "start"], condition=Q(status__in=["waiting", "offered"]),
+                name="one_live_waitlist_entry_per_slot",
+            ),
+        ]
