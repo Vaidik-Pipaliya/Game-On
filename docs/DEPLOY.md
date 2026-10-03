@@ -49,15 +49,33 @@ What we changed for Vercel (all standard library):
    curl -H "Authorization: Bearer <CRON_SECRET>" https://<project>.vercel.app/cron/retry-notifications/
    ```
 
-## Scheduled jobs (`vercel.json`)
+## Scheduled jobs: Vercel Cron + cron-job.org
 
-| Job | Schedule (UTC) | IST |
-|---|---|---|
-| `/cron/renewal-reminders/` | `30 0 * * *` | 06:00 |
-| `/cron/booking-reminders/?window_hours=17` | `30 0 * * *` | 06:00, reminds every session today |
-| `/cron/retry-notifications/` | `30 6 * * *` | 12:00 |
+Vercel's free (Hobby) plan runs each cron job **once a day**, so the frequent jobs run from **cron-job.org** (free), which calls the same secured URLs.
 
-The **Hobby (free) plan allows each cron job once a day** (and only to within the hour), so booking reminders go out in one morning batch instead of 2 hours before each session. On **Pro**, change the reminder job to `*/15 * * * *` without `window_hours` (default 2 hours) and retries to `*/30 * * * *`.
+| Job | Who runs it | Schedule | Why |
+|---|---|---|---|
+| `/cron/booking-reminders/` | cron-job.org | every 15 minutes | reminds members ~2 hours before play (each booking once) |
+| `/cron/retry-notifications/` | cron-job.org | every 30 minutes | resends failed WhatsApp/email (max 3 tries) |
+| `/cron/renewal-reminders/` | Vercel (`vercel.json`) | `30 0 * * *` = 06:00 IST | once a day is enough |
+| `/cron/retry-notifications/` | Vercel (`vercel.json`) | `30 6 * * *` = 12:00 IST | backup if cron-job.org is down |
+
+Booking reminders are **not** in `vercel.json` on purpose: a once-a-day run would remind everyone at 06:00 and the 2-hours-before reminders would never be sent.
+
+### Set up cron-job.org (5 minutes)
+
+1. Sign up at https://cron-job.org (free) and open **Create cronjob**.
+2. **Booking reminders**
+   - Title: `Champions Club booking reminders`
+   - URL: `https://<project>.vercel.app/cron/booking-reminders/`
+   - Schedule: every 15 minutes
+   - Advanced → Request method `GET`; **Headers** → add `Authorization` = `Bearer <your CRON_SECRET>`
+   - Notifications: turn on "notify me when the job fails"
+3. **Retry failed messages**: same, URL `https://<project>.vercel.app/cron/retry-notifications/`, every 30 minutes.
+4. Press **Test run** on each. A good response is `{"job": "...", "result": 0}` (the number is how many messages were sent). `{"error": "Not allowed"}` means the header doesn't match `CRON_SECRET` on Vercel.
+5. Keep `CRON_SECRET` only in Vercel and cron-job.org. If it ever leaks, change it in both places; the most anyone could do with it is trigger reminders early.
+
+On Vercel **Pro**, cron-job.org isn't needed: put both jobs in `vercel.json` with `*/15 * * * *` and `*/30 * * * *`.
 
 ## Things to know about serverless
 

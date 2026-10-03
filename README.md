@@ -125,7 +125,7 @@ Open **http://localhost:8000** (use `localhost`, not `127.0.0.1`, for Google sig
 ### Scheduled jobs
 
 Locally they are management commands: `send_booking_reminders`, `retry_notifications`, `send_renewal_reminders`.
-On Vercel the same jobs run from `vercel.json` cron entries calling `/cron/<job>/`, protected by `CRON_SECRET` (daily on the free plan; see the deploy guide).
+Deployed, they are URLs `/cron/<job>/` protected by `CRON_SECRET`: booking reminders (every 15 min) and retries (every 30 min) are called by cron-job.org, renewal reminders daily by Vercel Cron (`vercel.json`). See the deploy guide.
 
 ### Deploy
 
@@ -147,7 +147,8 @@ Demo script with the strongest moments first: [docs/DEMO.md](docs/DEMO.md). Depl
 - **GST summary** covers invoices only; counter, bar and court prices are treated as GST-inclusive and not split out.
 - **Payroll** is a flat 12% deduction; no PF/ESI/TDS filing (out of scope in the PRD).
 - **Rate limiting** uses Django's in-memory cache, which on Vercel is per function instance; a shared cache (e.g. Upstash Redis) would make it exact.
-- **On Vercel's free plan, cron runs once a day**, so booking reminders go out in a 06:00 batch rather than 2 hours before play (Pro plan: every 15 minutes).
+- **Frequent jobs depend on cron-job.org** (free, no delivery guarantee) because Vercel's free plan runs cron once a day; a missed run delays a reminder but never affects bookings or money.
+- **Hosting is on free plans** (Vercel Hobby is for non-commercial use, Neon free has limited storage); a real club should move to paid plans.
 - **Kitchen screen** refreshes every 10 s instead of pushing updates (no websockets).
 - **Bar shift takings** assume one till (the ledger has no staff column).
 - No audit log table for overrides (the ledger, decided_by on leave and created_by on bookings cover the main money and decisions).
