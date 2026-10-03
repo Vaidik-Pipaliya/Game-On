@@ -2,6 +2,7 @@
 
 import hashlib
 import hmac
+import logging
 
 import razorpay
 from django.conf import settings
@@ -11,6 +12,8 @@ from django.utils import timezone
 from shop.models import Order
 
 from .models import Ledger, Method, Payment, Source
+
+logger = logging.getLogger(__name__)
 
 DESK_METHODS = (Method.CASH, Method.CARD, Method.UPI)
 
@@ -58,7 +61,9 @@ class OnlinePaymentUnavailable(Exception):
 def start_online_payment(*, source, reference_id, amount_paise):
     """Create a Razorpay order; the browser then opens Razorpay Checkout for it."""
     if not (settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET):
-        raise OnlinePaymentUnavailable("Online payments are not set up. Add the Razorpay test keys to .env.")
+        # Customers must not see configuration advice; the operator finds this line in the server logs.
+        logger.warning("Online payment requested but RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not set.")
+        raise OnlinePaymentUnavailable("Online payment isn't available right now.")
     try:
         order = _razorpay_client().order.create({
             "amount": amount_paise,

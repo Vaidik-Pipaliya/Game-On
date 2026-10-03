@@ -26,7 +26,7 @@
 </div>
 <div class="pgrid-wrap">
   <table class="pgrid">
-    <thead><tr><th class="court-col">Court</th>{% for s in starts %}<th scope="col">{{ s|date:"g:i" }}</th>{% endfor %}</tr></thead>
+    <thead><tr><th class="court-col">Court</th>{% for s in starts %}<th scope="col" class="lh-sm">{{ s|date:"g:i" }}<small class="d-block text-muted fw-normal">{{ s|date:"A" }}</small></th>{% endfor %}</tr></thead>
     <tbody>
     {% for row in rows %}
       <tr><th scope="row" class="court-col fw-normal">{{ row.court.name }}</th>
