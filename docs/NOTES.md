@@ -70,3 +70,14 @@
 - **Low-stock alert:** fires once when a sale crosses the reorder level (not on every later sale); shown to staff and listed on the Stock page. Email to staff is added in M12.
 - Session cart (`request.session["cart"]`), checkout needs Google login. Customers can only open the payment page of their own order.
 - Staff (owner / shop_staff / front_desk): counter sale (formset of 5 lines), online orders (ready -> collected/delivered, cancel), stock + restock.
+
+## M9 - Bar and cafe
+- **One open tab per table is a database rule:** partial `UniqueConstraint(fields=["table"], condition=status='open')`. Two waiters opening the same table -> the second gets "Table T1 already has an open tab". Same idea: one open shift per staff member.
+- **Automatic member discount:** `bill_for(tab)` calls `price_for("bar", subtotal, membership)` and shows it as its own line ("Gold member discount -10%"). Staff never press a discount button. Attaching the member later (by phone) applies it too.
+- Item price is frozen on `TabLine` at order time; a menu price change doesn't alter open bills.
+- **Split payment:** `settle_tab(tab, [(method, amount), ...])` - up to 3 methods, must add up to exactly the bill; one ledger row per method; the tab row is locked so two devices can't settle twice. Discount and total are frozen on the tab for reports.
+- **Kitchen/bar screens:** new lines routed by `MenuItem.station`, oldest first, "Ready" button; the page reloads every 10 s (`<meta http-equiv="refresh">`) - simple auto-refresh, no websockets.
+- **Shifts:** opening float + cash taken during the shift = expected cash; closing count - expected = difference. Takings are all bar ledger rows in the shift window (one till; per-staff tills would need a staff column on the ledger).
+- **Day report:** takings by method (from the ledger), member discounts given, tabs closed/voided, open tabs with running totals.
+- Only empty tabs can be voided; other voids would need manager approval + audit (not built).
+- `config/clock.py: local_day_bounds()` is now shared by courts, bar and (next) reports. `docs/ARCHITECTURE.md` has the technology diagram.

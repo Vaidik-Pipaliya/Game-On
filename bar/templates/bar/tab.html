@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Tab #{{ tab.pk }}{% endblock %}
+{% block content %}
+{% include "bar/_nav.html" %}
+<h1 class="h3">Tab #{{ tab.pk }} &middot; {{ tab.who }}{% if tab.table %} &middot; {{ tab.table.label }}{% endif %}
+  <span class="badge {% if tab.status == 'open' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ tab.get_status_display }}</span></h1>
+
+<div class="row g-4">
+  {% if tab.status == "open" %}
+  <div class="col-lg-7">
+    {% for category, items in menu %}
+      <h2 class="h6 mt-3">{{ category }}</h2>
+      <div class="d-flex flex-wrap gap-2">
+        {% for item in items %}
+          <form method="post" action="{% url 'bar_tab_action' tab.pk 'add' %}">{% csrf_token %}
+            <input type="hidden" name="item" value="{{ item.pk }}">
+            <button class="btn btn-outline-primary" style="min-width:120px;min-height:72px">
+              {{ item.name }}<br><span class="small">{{ item.price_paise|rupees }}</span>
+            </button>
+          </form>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="col-lg-5">
+    <div class="bg-white border rounded p-3">
+      <table class="table table-sm mb-2">
+        <tbody>
+        {% for line in lines %}
+          <tr><td>{{ line.quantity }} &times; {{ line.menu_item.name }}{% if line.progress != "new" %} <span class="badge bg-success">{{ line.progress }}</span>{% endif %}</td>
+              <td class="text-end">{{ line.unit_price_paise|rupees }}</td></tr>
+        {% empty %}<tr><td class="text-muted">Nothing ordered yet. Tap an item to add it.</td></tr>{% endfor %}
+        </tbody>
+        <tfoot>
+          <tr><th>Subtotal</th><th class="text-end">{{ bill.subtotal_paise|rupees }}</th></tr>
+          {% if bill.discount_paise %}<tr class="text-success"><td>{{ bill.discount_label }}</td><td class="text-end">-{{ bill.discount_paise|rupees }}</td></tr>{% endif %}
+          <tr><th>Total</th><th class="text-end">{{ bill.total_paise|rupees }}</th></tr>
+        </tfoot>
+      </table>
+
+      {% if tab.status == "open" %}
+        {% if not tab.member %}
+        <form method="post" action="{% url 'bar_tab_action' tab.pk 'member' %}" class="d-flex gap-2 mb-3">{% csrf_token %}
+          <input name="member_phone" class="form-control form-control-sm" placeholder="Member's phone for their discount" aria-label="Member's phone">
+          <button class="btn btn-sm btn-outline-secondary">Attach</button>
+        </form>
+        {% endif %}
+
+        <form method="post" action="{% url 'bar_tab_action' tab.pk 'settle' %}">{% csrf_token %}
+          <div class="small text-muted mb-1">Payment (split across up to 3 methods)</div>
+          {% for i in "012" %}
+          <div class="d-flex gap-2 mb-1">
+            <select name="method_{{ i }}" class="form-select form-select-sm" aria-label="Method {{ forloop.counter }}">
+              {% for m in methods %}<option value="{{ m.value }}">{{ m.label }}</option>{% endfor %}
+            </select>
+            <input name="amount_{{ i }}" class="form-control form-control-sm" placeholder="₹" inputmode="decimal" aria-label="Amount {{ forloop.counter }}"
+                   {% if forloop.first %}value="{{ bill.total_paise|rupees_input }}"{% endif %}>
+          </div>
+          {% endfor %}
+          <button class="btn btn-primary w-100 mt-2">Take payment and close tab</button>
+        </form>
+        {% if not lines %}
+        <form method="post" action="{% url 'bar_tab_action' tab.pk 'void' %}" class="mt-2">{% csrf_token %}
+          <button class="btn btn-sm btn-link text-danger p-0">Close empty tab</button>
+        </form>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 from members.models import Member
 
@@ -41,6 +42,21 @@ class Tab(models.Model):
     opened_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
     opened_at = models.DateTimeField(auto_now_add=True)
     closed_at = models.DateTimeField(null=True, blank=True)
+    # Frozen when the tab is settled, for the day report.
+    discount_paise = models.PositiveIntegerField(default=0)
+    total_paise = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            # The database refuses a second open tab on the same table (two waiters, one table).
+            models.UniqueConstraint(fields=["table"], condition=Q(status="open"), name="one_open_tab_per_table"),
+        ]
+
+    @property
+    def who(self):
+        if self.member:
+            return self.member.full_name
+        return self.customer_name or (f"Table {self.table.label}" if self.table else "Walk-in")
 
 
 class TabLine(models.Model):
@@ -63,3 +79,8 @@ class Shift(models.Model):
     ended_at = models.DateTimeField(null=True, blank=True)
     opening_cash_paise = models.PositiveIntegerField(default=0)
     closing_cash_paise = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["staff"], condition=Q(ended_at__isnull=True), name="one_open_shift_per_staff"),
+        ]

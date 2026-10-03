@@ -14,6 +14,11 @@
     <a href="{% url 'shop_orders' %}" class="list-group-item list-group-item-action">Shop: online orders</a>
     <a href="{% url 'shop_stock' %}" class="list-group-item list-group-item-action">Shop: stock and low-stock alerts</a>
   {% endif %}
+  {% if su or role == "owner" or role == "bar_staff" %}
+    <a href="{% url 'bar_tables' %}" class="list-group-item list-group-item-action">Bar: tables and tabs</a>
+    <a href="{% url 'bar_kitchen' %}" class="list-group-item list-group-item-action">Bar: kitchen screen</a>
+    <a href="{% url 'bar_day_report' %}" class="list-group-item list-group-item-action">Bar: shift and day report</a>
+  {% endif %}
 </div>
 {% endwith %}
 {% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Bar day report{% endblock %}
+{% block content %}
+{% include "bar/_nav.html" %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h3 mb-0">Bar day report &middot; {{ day|date:"j M Y" }}</h1>
+  <form class="d-flex gap-2"><input type="date" name="date" value="{{ day|date:'Y-m-d' }}" class="form-control form-control-sm" aria-label="Date"><button class="btn btn-sm btn-outline-primary">Show</button></form>
+</div>
+<div class="row g-3 mb-4">
+  {% for method, amount in report.by_method.items %}
+    <div class="col-6 col-md-3"><div class="bg-white border rounded p-3"><div class="small text-muted">{{ method|upper }}</div><div class="fs-4">{{ amount|rupees }}</div></div></div>
+  {% endfor %}
+  <div class="col-6 col-md-3"><div class="bg-white border rounded p-3"><div class="small text-muted">Total takings</div><div class="fs-4"><strong>{{ report.total|rupees }}</strong></div></div></div>
+</div>
+<p>Tabs closed: <strong>{{ report.tabs_closed }}</strong> &middot; Member discounts given: <strong>{{ report.discounts|rupees }}</strong> &middot; Empty tabs voided: <strong>{{ report.voided }}</strong></p>
+<h2 class="h5">Open tabs right now</h2>
+<table class="table bg-white border">
+  <thead><tr><th>Tab</th><th>Table</th><th>Opened</th><th class="text-end">Running total</th></tr></thead>
+  <tbody>
+  {% for tab, bill in report.open_tabs %}
+    <tr><td><a href="{% url 'bar_tab' tab.pk %}">#{{ tab.pk }} {{ tab.who }}</a></td><td>{{ tab.table.label|default:"-" }}</td><td>{{ tab.opened_at|date:"H:i" }}</td><td class="text-end">{{ bill.total_paise|rupees }}</td></tr>
+  {% empty %}<tr><td colspan="4" class="text-muted text-center">No open tabs. Ready to close the day.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

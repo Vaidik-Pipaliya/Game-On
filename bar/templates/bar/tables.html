@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Bar tables{% endblock %}
+{% block content %}
+{% include "bar/_nav.html" %}
+<h1 class="h3 mb-3">Tables</h1>
+<div class="row g-3 mb-4">
+  {% for table, tab in table_rows %}
+  <div class="col-6 col-md-3 col-lg-2">
+    {% if tab %}
+      <a href="{% url 'bar_tab' tab.pk %}" class="d-block border rounded p-3 text-decoration-none text-dark" style="background:#fbefd9;min-height:96px">
+        <strong>{{ table.label }}</strong><br>
+        <span class="small">Tab open &middot; {{ tab.who }}</span>
+      </a>
+    {% else %}
+      <form method="post" action="{% url 'bar_tab_open' %}">{% csrf_token %}
+        <input type="hidden" name="table" value="{{ table.pk }}">
+        <button class="w-100 border rounded p-3 bg-white text-start" style="min-height:96px">
+          <strong>{{ table.label }}</strong><br><span class="small text-muted">Free &middot; open tab</span>
+        </button>
+      </form>
+    {% endif %}
+  </div>
+  {% empty %}
+  <p class="text-muted">No tables yet. Add them in admin.</p>
+  {% endfor %}
+</div>
+
+<h2 class="h5">Tabs without a table</h2>
+<ul>{% for tab in loose_tabs %}<li><a href="{% url 'bar_tab' tab.pk %}">#{{ tab.pk }} {{ tab.who }}</a></li>{% empty %}<li class="text-muted">None open.</li>{% endfor %}</ul>
+<form method="post" action="{% url 'bar_tab_open' %}" class="d-flex gap-2 col-md-6">{% csrf_token %}
+  <input name="customer_name" class="form-control" placeholder="Name for a tab at the counter" aria-label="Customer name">
+  <button class="btn btn-primary">Open tab</button>
+</form>
+{% endblock %}

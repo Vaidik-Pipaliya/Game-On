@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ station|capfirst }} screen{% endblock %}
+{% block content %}
+{# Reload every 10 seconds so new orders appear without anyone touching the screen. #}
+<meta http-equiv="refresh" content="10">
+{% include "bar/_nav.html" %}
+<h1 class="h3">{{ station|capfirst }} screen <span class="small text-muted">updates every 10 seconds</span></h1>
+<div class="row g-3" aria-live="polite">
+  {% for line in tickets %}
+  <div class="col-sm-6 col-lg-3">
+    <div class="bg-white border rounded p-3 h-100">
+      <div class="small text-muted">{{ line.ordered_at|date:"H:i" }} &middot; {% if line.tab.table %}{{ line.tab.table.label }}{% else %}Counter{% endif %} &middot; {{ line.tab.who }}</div>
+      <div class="fs-5 my-1"><strong>{{ line.quantity }} &times; {{ line.menu_item.name }}</strong></div>
+      <form method="post" action="{% url 'bar_ticket_ready' line.pk %}">{% csrf_token %}
+        <input type="hidden" name="station" value="{{ station }}">
+        <button class="btn btn-success w-100">Ready</button>
+      </form>
+    </div>
+  </div>
+  {% empty %}
+  <p class="text-muted">No orders waiting.</p>
+  {% endfor %}
+</div>
+{% endblock %}

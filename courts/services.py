@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from config.clock import local_day_bounds
 from finance.models import Method, Source
 from finance.services import DESK_METHODS, record_payment, record_refund
 from members.models import Member
@@ -39,15 +40,6 @@ class DailyLimitReached(ValidationError):
 
 class SessionFull(ValidationError):
     pass
-
-
-def _local_bounds(day):
-    """[start, end) of one club-local calendar day, as aware datetimes."""
-    tz = timezone.get_current_timezone()
-    return (
-        datetime.combine(day, time.min, tzinfo=tz),
-        datetime.combine(day + timedelta(days=1), time.min, tzinfo=tz),
-    )
 
 
 def validate_slot_start(start, now):
@@ -148,7 +140,7 @@ def book_court(*, court, start, member=None, guest_name="", guest_phone="", paym
 def _enforce_daily_limit(member, membership, day):
     on_plan = membership is not None and membership.status_on(day) in ("active", "expiring")
     limit = membership.plan.daily_booking_limit if on_plan else DEFAULT_DAILY_LIMIT
-    day_start, day_end = _local_bounds(day)
+    day_start, day_end = local_day_bounds(day)
     # Only confirmed bookings count (whole-court and social seats), so a cancelled one gives the quota back.
     booked = Booking.objects.filter(
         member=member, status=Booking.Status.CONFIRMED, start__gte=day_start, start__lt=day_end
@@ -162,8 +154,8 @@ def _free_hours_left(member, membership, day):
         return 0
     first_of_month = day.replace(day=1)
     first_of_next_month = (first_of_month + timedelta(days=32)).replace(day=1)
-    month_start = _local_bounds(first_of_month)[0]
-    month_end = _local_bounds(first_of_next_month)[0]
+    month_start = local_day_bounds(first_of_month)[0]
+    month_end = local_day_bounds(first_of_next_month)[0]
     # A free session is one stored at price 0. Cancelling it removes it from this count.
     used = Booking.objects.filter(
         member=member, kind=Booking.Kind.EXCLUSIVE, status=Booking.Status.CONFIRMED, price_paise=0,
@@ -271,7 +263,7 @@ def grid_for_day(day, sport=None, now=None):
     courts = Court.objects.filter(is_active=True).select_related("sport").order_by("sport__name", "name")
     if sport is not None:
         courts = courts.filter(sport=sport)
-    day_start, day_end = _local_bounds(day)
+    day_start, day_end = local_day_bounds(day)
     bookings = Booking.objects.filter(
         court__in=courts, kind=Booking.Kind.EXCLUSIVE, status=Booking.Status.CONFIRMED,
         start__lt=day_end, end__gt=day_start,
@@ -294,7 +286,7 @@ def grid_for_day(day, sport=None, now=None):
 
 def day_bookings(day):
     """Everything booked on a club-local day (whole-court and social seats), for the list under the grid."""
-    day_start, day_end = _local_bounds(day)
+    day_start, day_end = local_day_bounds(day)
     return (
         Booking.objects.filter(start__gte=day_start, start__lt=day_end)
         .exclude(kind=Booking.Kind.EXCLUSIVE, social_session__isnull=False)  # hide the court-block row of a social session

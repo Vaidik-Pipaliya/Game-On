@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}My shift{% endblock %}
+{% block content %}
+{% include "bar/_nav.html" %}
+<h1 class="h3 mb-3">My shift</h1>
+<div class="bg-white border rounded p-3 col-md-6 mb-4">
+  {% if current %}
+    <p>Started {{ current.shift.started_at|date:"j M, H:i" }} with {{ current.shift.opening_cash_paise|rupees }} in the drawer.</p>
+    <p>Bar takings so far: <strong>{{ current.sales_paise|rupees }}</strong> (cash {{ current.cash_sales_paise|rupees }}). Expected cash in drawer: <strong>{{ current.expected_cash_paise|rupees }}</strong>.</p>
+    <form method="post" class="d-flex gap-2">{% csrf_token %}
+      <input name="cash" class="form-control" placeholder="Cash counted in drawer (₹)" inputmode="decimal" aria-label="Closing cash" required>
+      <button class="btn btn-primary">End shift</button>
+    </form>
+  {% else %}
+    <form method="post" class="d-flex gap-2">{% csrf_token %}
+      <input name="cash" class="form-control" placeholder="Opening cash in drawer (₹)" inputmode="decimal" aria-label="Opening cash" required>
+      <button class="btn btn-primary">Start shift</button>
+    </form>
+  {% endif %}
+</div>
+<h2 class="h5">Recent shifts</h2>
+<table class="table bg-white border">
+  <thead><tr><th>Shift</th><th class="text-end">Sales</th><th class="text-end">Expected cash</th><th class="text-end">Counted</th><th class="text-end">Difference</th></tr></thead>
+  <tbody>
+  {% for s in recent %}
+    <tr><td>{{ s.shift.started_at|date:"j M H:i" }}-{{ s.shift.ended_at|date:"H:i" }}</td><td class="text-end">{{ s.sales_paise|rupees }}</td>
+        <td class="text-end">{{ s.expected_cash_paise|rupees }}</td><td class="text-end">{{ s.shift.closing_cash_paise|rupees }}</td>
+        <td class="text-end {% if s.difference_paise %}text-danger{% endif %}">{{ s.difference_paise|rupees }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="text-muted text-center">No finished shifts yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+<p class="small text-muted">Takings are all bar payments recorded during the shift (one till).</p>
+{% endblock %}
