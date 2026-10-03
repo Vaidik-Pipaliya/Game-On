@@ -16,7 +16,7 @@ Before the demo: `manage.py seed_demo` has run on the live database, Razorpay **
 | 3:10 | Bar → table T1 (open tab with a Gold member) | "The Gold member discount is an automatic line; nobody has to remember it. Split the bill: ₹500 cash + rest UPI." Kitchen screen: "Orders route to kitchen or bar and refresh by themselves." |
 | 3:40 | Shop stock → item at 0 | "Counter and online orders share one stock. The update is `stock = stock - 1 WHERE stock >= 1`; the last pair can only be sold once (tested with 10 parallel buyers)." |
 | 4:00 | Owner dashboard | "Every number is a sum of an append-only ledger, so it always matches the daily close: revenue by courts, shop, bar, memberships × cash, card, UPI, online; what we're owed; utilisation and peak hours from pandas." |
-| 4:30 | Public site → Book a trial / Contact | "A visitor books a trial; it becomes a lead, auto-assigned and emailed after commit. A hidden honeypot and a rate limit stop spam without a CAPTCHA." |
+| 4:30 | Public site → Contact, then Book a trial (signs in with Google first) | "An enquiry becomes a lead, auto-assigned and emailed after commit; a hidden honeypot and a rate limit stop spam. A trial booking needs a verified Google account and allows one per person, so nobody can anonymously block courts." |
 | 4:50 | Close | "322 tests, including real concurrency tests. Simple tools, with the hard rules in the database." |
 
 If time is short, drop the bar and public-site rows; keep the first six (booking, hold, waitlist, refund, audit).

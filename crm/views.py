@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -56,8 +57,8 @@ def availability(request):
     return render(request, "crm/availability.html", {"week": _public_week(7)})
 
 
-def _public_form(request, form_class, template, on_valid):
-    form = form_class(request.POST or None)
+def _public_form(request, form_class, template, on_valid, initial=None):
+    form = form_class(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         if form.is_bot():
             return redirect("enquiry_thanks")  # pretend success, store nothing
@@ -82,10 +83,16 @@ def enquiry(request):
     return _public_form(request, EnquiryForm, "crm/enquiry.html", save)
 
 
+@login_required  # a trial needs a verified Google account, so fake bookings can't block courts anonymously
 def trial(request):
+    if getattr(request.user, "member", None) is not None:
+        messages.info(request, "You're already a member: book your court directly.")
+        return redirect("portal_grid")
+
     def save(data):
-        book_trial(name=data["name"], phone=data["phone"], email=data["email"], court=data["court"], start=data["start"])
-    return _public_form(request, TrialForm, "crm/trial.html", save)
+        book_trial(name=data["name"], phone=data["phone"], court=data["court"], start=data["start"], user=request.user)
+
+    return _public_form(request, TrialForm, "crm/trial.html", save, initial={"name": request.user.first_name})
 
 
 def thanks(request):

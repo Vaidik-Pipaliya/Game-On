@@ -32,7 +32,7 @@ class CrmTestCase(Fixtures, TestCase):
 
 class PublicPageTests(CrmTestCase):
     def test_public_pages_need_no_login(self):
-        for name in ("home", "plans", "availability", "enquiry", "trial", "enquiry_thanks"):
+        for name in ("home", "plans", "availability", "enquiry", "enquiry_thanks"):
             self.assertEqual(self.client.get(reverse(name)).status_code, 200, name)
 
     def test_home_has_local_business_structured_data(self):
@@ -81,18 +81,58 @@ class EnquiryTests(CrmTestCase):
 
 
 class TrialTests(CrmTestCase):
-    def trial(self, start):
+    def setUp(self):
+        super().setUp()
+        self.visitor = User.objects.create(username="v", email="visitor@example.com", role="member", first_name="Sneha")
+        self.client.force_login(self.visitor)
+
+    def trial(self, start, court=None):
         return self.client.post(reverse("trial"), {
-            "name": "Sneha Kapoor", "phone": "9811100002", "email": "", "court": self.court1.pk,
+            "name": "Sneha Kapoor", "phone": "9811100002", "court": (court or self.court1).pk,
             "start": start.strftime("%Y-%m-%dT%H:%M"), "website": "",
         })
 
-    def test_trial_books_the_court_and_creates_a_linked_lead(self):
+    def test_anonymous_visitors_must_sign_in_first_and_book_nothing(self):
+        self.client.logout()
+        start = local(future_day(), 17)
+        response = self.trial(start)
+        self.assertRedirects(response, f"/login/?next={reverse('trial')}", fetch_redirect_response=False)
+        self.assertEqual(self.client.get(reverse("trial")).status_code, 302)
+        self.assertEqual((Booking.objects.count(), Lead.objects.count()), (0, 0))
+
+    def test_signed_in_visitor_sees_the_form_prefilled_with_their_name(self):
+        response = self.client.get(reverse("trial"))
+        self.assertContains(response, "visitor@example.com")
+        self.assertContains(response, 'value="Sneha"')
+
+    def test_trial_books_the_court_and_creates_a_linked_lead_with_the_verified_email(self):
         start = local(future_day(), 17)
         self.assertRedirects(self.trial(start), reverse("enquiry_thanks"))
         lead = Lead.objects.get()
-        self.assertEqual((lead.source, lead.trial_booking.start, lead.trial_booking.price_paise), ("trial", start, 80000))
+        self.assertEqual((lead.source, lead.email, lead.trial_booking.start, lead.trial_booking.price_paise),
+                         ("trial", "visitor@example.com", start, 80000))
+        self.assertEqual(lead.trial_booking.created_by, self.visitor)
         self.assertFalse(lead.trial_booking.is_paid)  # pay at the club
+
+    def test_only_one_upcoming_trial_per_account(self):
+        day = future_day()
+        self.trial(local(day, 17))
+        response = self.trial(local(day, 19), court=self.court2)
+        self.assertContains(response, "You already have a trial booked")
+        self.assertEqual(Booking.objects.count(), 1)
+
+    def test_a_cancelled_trial_frees_the_account_to_try_again(self):
+        day = future_day()
+        self.trial(local(day, 17))
+        Booking.objects.update(status="cancelled")
+        self.trial(local(day, 19))
+        self.assertEqual(Booking.objects.filter(status="confirmed").count(), 1)
+
+    def test_existing_members_are_sent_to_the_member_booking_page(self):
+        member = self.make_member(self.silver)
+        member.user = self.visitor
+        member.save()
+        self.assertRedirects(self.client.get(reverse("trial")), reverse("portal_grid"), fetch_redirect_response=False)
 
     def test_taken_slot_shows_message_and_saves_no_lead(self):
         start = local(future_day(), 17)

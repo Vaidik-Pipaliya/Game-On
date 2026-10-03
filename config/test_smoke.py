@@ -30,7 +30,7 @@ class EveryPageTests(TestCase):
                 self.assertEqual(response.status_code, 200, f"{url} returned {response.status_code}")
 
     def test_public_pages(self):
-        self.assertPages([reverse(n) for n in ("home", "plans", "availability", "enquiry", "trial", "shop_catalog", "shop_cart", "login", "enquiry_thanks")]
+        self.assertPages([reverse(n) for n in ("home", "plans", "availability", "enquiry", "shop_catalog", "shop_cart", "login", "enquiry_thanks")]
                          + [reverse("shop_catalog") + "?category=shoes"])
 
     def test_staff_and_owner_pages(self):
@@ -50,6 +50,12 @@ class EveryPageTests(TestCase):
             reverse("invoice_list"), reverse("invoice_detail", args=[invoice.pk]), reverse("gst_report") + f"?month={month}",
             reverse("payroll") + f"?month={month}", reverse("leave_approvals"), reverse("my_leave"),
         ])
+
+    def test_trial_page_needs_sign_in_then_opens(self):
+        self.assertEqual(self.client.get(reverse("trial")).status_code, 302)
+        visitor = User.objects.create(username="v", email="visitor@example.com", role="member")
+        self.client.force_login(visitor)
+        self.assertPages([reverse("trial")])
 
     def test_member_portal_pages(self):
         member = Member.objects.exclude(memberships=None).first()

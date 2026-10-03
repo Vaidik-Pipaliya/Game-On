@@ -35,7 +35,6 @@ class EnquiryForm(PublicFormMixin, forms.Form):
 class TrialForm(PublicFormMixin, forms.Form):
     name = forms.CharField(max_length=120)
     phone = forms.CharField()
-    email = forms.EmailField(required=False)
     court = forms.ModelChoiceField(queryset=Court.objects.filter(is_active=True).select_related("sport").order_by("sport__name", "name"))
     start = forms.CharField(label="Date and time", widget=forms.DateTimeInput(attrs={"type": "datetime-local", "step": 1800}),
                             help_text="Sessions are 1 hour and start on the hour or half hour")

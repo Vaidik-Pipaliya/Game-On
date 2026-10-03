@@ -3,7 +3,7 @@
 {% block content %}
 <div class="col-lg-6">
   <h1 class="h3">Book a trial session</h1>
-  <p class="text-muted">One hour on the court at the standard rate, paid at the club. <a href="{% url 'availability' %}">See which courts are free.</a></p>
+  <p class="text-muted">One hour on the court at the standard rate, paid at the club. Signed in as {{ user.email }}; we'll use this email for your confirmation. One trial per person. <a href="{% url 'availability' %}">See which courts are free.</a></p>
   {% include "crm/_public_form.html" with submit_label="Book trial" %}
 </div>
 {% endblock %}

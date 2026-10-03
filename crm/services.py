@@ -56,10 +56,18 @@ def create_lead(*, name, phone, email="", sport_interest="", message="", source=
     return lead
 
 
-def book_trial(*, name, phone, email, court, start):
-    """A visitor books a trial session (walk-in rate, pay at the club) and becomes a lead in the same transaction."""
+def book_trial(*, name, phone, court, start, user):
+    """A signed-in visitor books ONE trial session (walk-in rate, pay at the club) and becomes a lead,
+    in the same transaction. The email is the verified Google email, so every trial is traceable."""
     with transaction.atomic():
-        booking = book_court(court=court, start=start, guest_name=name, guest_phone=phone)
+        has_upcoming_trial = Lead.objects.filter(
+            source="trial", trial_booking__created_by=user, trial_booking__status="confirmed",
+            trial_booking__start__gt=timezone.now(),
+        ).exists()
+        if has_upcoming_trial:
+            raise ValidationError("You already have a trial booked. Try it first, then ask about membership.")
+        email = user.email
+        booking = book_court(court=court, start=start, guest_name=name, guest_phone=phone, created_by=user)
         lead = create_lead(
             name=name, phone=phone, email=email, sport_interest=court.sport.name, source="trial",
             message=f"Trial booked on {court.name} at {timezone.localtime(start):%d %b %H:%M}.",

@@ -24,7 +24,7 @@ Built with Django, PostgreSQL, Bootstrap and a little JavaScript: simple, standa
 | **Members** | Front-desk sign-up, Gold / Silver / Junior plans (Junior needs an adult guardian), automatic expiry status, renewal with payment, reminders at 14 / 7 / 1 days, search by name or phone, profile with history |
 | **Shop** | Products with sizes, counter sales and online orders (pickup or delivery) from **the same stock**, member discount, low-stock alerts, restocking |
 | **Bar and cafe** | Tables and tabs, kitchen and bar ticket screens, **automatic member discount line**, split payment across cash / card / UPI, shifts with cash check, day report |
-| **Public website** | Club info, plans comparison, free courts for the week, shop, trial booking, enquiry form with spam protection |
+| **Public website** | Club info, plans comparison, free courts for the week, shop, enquiry form with spam protection, trial booking (after Google sign-in, one per account) |
 | **Leads** | Every enquiry becomes a lead, auto-assigned and emailed, status pipeline, overdue follow-ups, one-click "register as member" |
 | **Money** | One append-only ledger; owner dashboard (today / week / month vs previous), revenue by source × method, amounts owed, analytics (trend, utilisation, peak hours), CSV export |
 | **Payments** | Cash / card / UPI at the desk, Razorpay (test mode) online with signature check, webhook and **refunds through Razorpay's refund API** (remembered in the cancellation transaction, retryable) |
