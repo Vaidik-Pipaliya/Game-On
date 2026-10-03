@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Court grid{% endblock %}
+{% block content %}
+<style>
+  .grid-wrap { overflow-x: auto; background: #fff; border: 1px solid #dee2e6; border-radius: .5rem; }
+  table.grid { border-collapse: separate; border-spacing: 0; font-size: .75rem; }
+  table.grid th, table.grid td { min-width: 34px; height: 34px; text-align: center; border: 1px solid #eef0f2; padding: 0; }
+  table.grid th.court-col, table.grid td.court-col { position: sticky; left: 0; background: #fff; min-width: 130px; text-align: left; padding: 0 .5rem; z-index: 1; }
+  td.free a { display: block; height: 100%; line-height: 34px; background: #e4ecf6; text-decoration: none; color: #17407a; }
+  td.free a:hover, td.free a:focus { background: #17407a; color: #fff; }
+  td.taken { background: #dfe3e8; color: #16202b; }
+  td.social { background: #e1eef7; color: #2b6c9e; }
+  td.past { background: #f4f6f9; }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h3 mb-0">Court grid</h1>
+  <div class="d-flex align-items-center gap-2">
+    <a class="btn btn-outline-secondary btn-sm" href="?date={{ prev_day|date:'Y-m-d' }}{% if sport %}&amp;sport={{ sport.pk }}{% endif %}">&larr;</a>
+    <strong>{{ day|date:"D j M Y" }}</strong>
+    <a class="btn btn-outline-secondary btn-sm" href="?date={{ next_day|date:'Y-m-d' }}{% if sport %}&amp;sport={{ sport.pk }}{% endif %}">&rarr;</a>
+    <a class="btn btn-link btn-sm" href="{% url 'booking_grid' %}">Today</a>
+  </div>
+</div>
+
+<div class="mb-3 d-flex flex-wrap gap-2">
+  <a class="btn btn-sm {% if not sport %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?date={{ day|date:'Y-m-d' }}">All sports</a>
+  {% for s in sports %}
+    <a class="btn btn-sm {% if sport == s %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?date={{ day|date:'Y-m-d' }}&amp;sport={{ s.pk }}">{{ s.name }}</a>
+  {% endfor %}
+  <a class="btn btn-sm btn-outline-secondary ms-auto" href="{% url 'social_list' %}">Friday social play</a>
+</div>
+
+<div class="grid-wrap mb-2">
+  <table class="grid">
+    <thead>
+      <tr>
+        <th class="court-col">Court</th>
+        {% for s in starts %}<th>{% if s.minute == 0 %}{{ s|date:"H" }}{% endif %}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+    {% for row in rows %}
+      <tr>
+        <td class="court-col">{{ row.court.name }}</td>
+        {% for cell in row.cells %}
+          {% if cell.state == "free" %}
+            <td class="free"><a href="{% url 'booking_new' %}?court={{ row.court.pk }}&amp;start={{ cell.start|date:'Y-m-d\TH:i' }}" aria-label="Book {{ row.court.name }} at {{ cell.start|date:'H:i' }}">+</a></td>
+          {% elif cell.state == "past" %}
+            <td class="past"></td>
+          {% else %}
+            <td class="{{ cell.state }}" title="{{ cell.booking.member.full_name|default:cell.booking.guest_name }} {{ cell.booking.start|date:'H:i' }}">
+              {% if cell.booking.start == cell.start %}{{ cell.booking.member.full_name|default:cell.booking.guest_name|truncatechars:4 }}{% endif %}
+            </td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+    {% empty %}
+      <tr><td class="court-col">No courts yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="small text-muted mb-4">Each + starts a one-hour session at that time. Sessions can start every 30 minutes. Light blue is a social session.</p>
+
+<h2 class="h5">Bookings on {{ day|date:"j M" }}</h2>
+<div class="table-responsive bg-white border rounded">
+  <table class="table mb-0 align-middle">
+    <thead><tr><th>Time</th><th>Court</th><th>Who</th><th>Type</th><th class="text-end">Price</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for b in bookings %}
+      <tr>
+        <td>{{ b.start|date:"H:i" }}</td>
+        <td>{{ b.court.name }}</td>
+        <td>{% if b.member %}<a href="{% url 'member_detail' b.member.pk %}">{{ b.member.full_name }}</a>{% else %}{{ b.guest_name }} <span class="text-muted">{{ b.guest_phone }}</span>{% endif %}</td>
+        <td>{% if b.kind == "social" %}Social seat{% else %}Whole court{% endif %}</td>
+        <td class="text-end">{{ b.price_paise|rupees }}</td>
+        <td>{{ b.status|capfirst }}</td>
+        <td class="text-end">
+          {% if b.status == "confirmed" %}
+          <form method="post" action="{% url 'booking_cancel' b.pk %}" onsubmit="return confirm('Cancel this booking?');">{% csrf_token %}
+            <button class="btn btn-sm btn-outline-danger">Cancel</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="text-center text-muted py-4">No bookings on this day yet. Click a + in the grid to book a court.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -3,6 +3,8 @@
 {% block content %}
 <h1 class="h3">Staff desk</h1>
 <div class="list-group col-md-4">
+  <a href="{% url 'booking_grid' %}" class="list-group-item list-group-item-action">Court grid: book and cancel</a>
+  <a href="{% url 'social_list' %}" class="list-group-item list-group-item-action">Friday social play</a>
   <a href="{% url 'member_search' %}" class="list-group-item list-group-item-action">Members: search and register</a>
 </div>
 {% endblock %}

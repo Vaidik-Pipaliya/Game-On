@@ -1,5 +1,6 @@
 """Member business rules. Views and forms call these; they hold no HTML or request logic."""
 
+import re
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
@@ -12,6 +13,20 @@ from .models import Member, Membership
 
 ADULT_AGE = 18
 REMINDER_DAYS = (14, 7, 1)
+
+
+def normalize_phone(value):
+    """Keep the 10 digits of an Indian mobile number; accept +91 / 91 prefixes and spaces."""
+    digits = re.sub(r"\D", "", value)
+    if digits.startswith("91") and len(digits) == 12:
+        digits = digits[2:]
+    if len(digits) != 10:
+        raise ValidationError("Enter a 10-digit mobile number.")
+    return digits
+
+
+def find_member_by_phone(phone):
+    return Member.objects.filter(phone=normalize_phone(phone)).first()
 
 
 def age_on(born, day):

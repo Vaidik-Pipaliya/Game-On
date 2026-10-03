@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Friday social play{% endblock %}
+{% block content %}
+<a href="{% url 'booking_grid' %}" class="small">&larr; Court grid</a>
+<h1 class="h3 my-2">Friday social play</h1>
+
+{% if create_form %}
+<form method="post" action="{% url 'social_create' %}" class="bg-white border rounded p-3 mb-4">
+  {% csrf_token %}
+  <h2 class="h6">Open a social session</h2>
+  <div class="row g-2 align-items-end">
+    {% for field in create_form %}
+      <div class="col-md-3">
+        <label class="form-label small" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+      </div>
+    {% endfor %}
+    <div class="col-12"><button class="btn btn-primary">Open session</button></div>
+  </div>
+</form>
+{% endif %}
+
+{% for session in sessions %}
+<div class="bg-white border rounded p-3 mb-3">
+  <div class="d-flex flex-wrap justify-content-between">
+    <div>
+      <strong>{{ session.court.name }}</strong> &middot; {{ session.start|date:"D j M, H:i" }}
+      &middot; {{ session.price_per_player_paise|rupees }} per player
+    </div>
+    <div class="{% if session.taken >= session.capacity %}text-danger{% endif %}">
+      <strong>{{ session.taken }} / {{ session.capacity }}</strong> places taken{% if session.taken >= session.capacity %} (full){% endif %}
+    </div>
+  </div>
+  {% if session.players %}
+  <ul class="small my-2">
+    {% for p in session.players %}
+      <li>{% if p.member %}<a href="{% url 'member_detail' p.member.pk %}">{{ p.member.full_name }}</a>{% else %}{{ p.guest_name }}{% endif %} &middot; {{ p.price_paise|rupees }}
+        <form method="post" action="{% url 'booking_cancel' p.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-link btn-sm p-0 text-danger">Remove</button></form>
+      </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <form method="post" action="{% url 'social_join' session.pk %}" class="row g-2 mt-1">
+    {% csrf_token %}
+    <div class="col-md-3"><input class="form-control form-control-sm" name="member_phone" placeholder="Member's phone"></div>
+    <div class="col-md-3"><input class="form-control form-control-sm" name="guest_name" placeholder="or guest name"></div>
+    <div class="col-md-3"><input class="form-control form-control-sm" name="guest_phone" placeholder="guest phone"></div>
+    <div class="col-md-3"><button class="btn btn-sm btn-primary">Add player</button></div>
+  </form>
+</div>
+{% empty %}
+<p class="text-muted">No upcoming social sessions.{% if create_form %} Open one above.{% endif %}</p>
+{% endfor %}
+{% endblock %}

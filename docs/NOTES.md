@@ -42,3 +42,12 @@
 - Tests: 26, including `ConcurrencyTests` with real threads and real connections: 50 simultaneous requests for one slot -> exactly 1 booking; 1 member racing for 5 slots -> exactly 2.
 - Scaling: the constraint is backed by a GiST index, so overlap checks stay fast as bookings grow; the daily-limit count uses one indexed range query per request.
 - Not yet: cancel/refund (M6/M7), Friday social play (M6: it must also block exclusive bookings), booking screens (M6).
+
+## M6 - Cancel, front-desk booking screen, Friday social play
+- `cancel_booking` locks the booking row (`select_for_update`) so a double-click cancels and refunds once. Full refund if cancelled >= 24h before the session, none inside the window. Returns the refund due; the ledger entry is written in M7. Cancelled bookings stop counting for overlap, daily limit and free hours automatically.
+- **Social play reuses the overlap constraint:** `create_social_session` creates the SocialSession *and* an ordinary whole-court Booking for that hour in one transaction. So whole-court bookings and sessions can never overlap, with zero new overlap code. Creating a session on an already-booked slot fails the same way.
+- Joining locks the SocialSession row, counts seats, then inserts: 20 simultaneous joins on 12 places -> exactly 12 (threaded test). A social seat counts toward the member's 2-per-day limit (PRD assumption) but never uses a free court hour; member court discount applies to the per-player price.
+- Sessions: Fridays only, 1 hour, capacity >= 2; only the owner can open one.
+- Screens: `/desk/book/` court grid (courts x 30-min starts, sport filter, day stepper, + links prefill the form), `/desk/book/new/` (member by phone or walk-in name + phone), day list with Cancel, `/desk/social/`.
+- `grid_for_day` loads the day's bookings in one query and matches in Python: ~5 courts x 31 slots, trivial. With hundreds of courts we'd group by court in SQL.
+- Shared helpers: `members.services.normalize_phone/find_member_by_phone`, `accounts.forms.BootstrapFormMixin`.

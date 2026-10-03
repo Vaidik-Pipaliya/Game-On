@@ -206,11 +206,8 @@ class PricingOnBookingTests(Fixtures, TestCase):
         self.assertEqual(self.book(self.court1, at(10, 8), member=member).price_paise, 80000)
 
 
-class ConcurrencyTests(Fixtures, TransactionTestCase):
-    """Real threads, each with its own database connection. This is what the constraint and the lock are for."""
-
-    def setUp(self):
-        self.make_world()
+class ParallelMixin:
+    """Run callables on separate threads at the same instant, each with its own database connection."""
 
     def run_parallel(self, jobs):
         """Run callables at the same instant; return 'ok' or the exception class name for each."""
@@ -228,6 +225,13 @@ class ConcurrencyTests(Fixtures, TransactionTestCase):
 
         with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
             return list(pool.map(worker, jobs))
+
+
+class ConcurrencyTests(ParallelMixin, Fixtures, TransactionTestCase):
+    """Real threads and real connections: this is what the constraint and the row lock are for."""
+
+    def setUp(self):
+        self.make_world()
 
     def test_fifty_simultaneous_requests_for_one_slot_create_exactly_one_booking(self):
         members = [self.make_member(self.silver) for _ in range(50)]
