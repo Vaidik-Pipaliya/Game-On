@@ -138,6 +138,8 @@ Vercel (zero-config Django) + Neon Postgres, no extra packages: [docs/DEPLOY.md]
 
 ## Screens
 
+The interface follows the "Athletic Operational Precision" design: one stylesheet (`static/css/club.css`) on Bootstrap 5, a top-bar layout for the public site and members, and a sidebar layout for staff and the owner. Templates only; no business logic lives in the design.
+
 Public: `/` home · `/plans/` · `/courts/availability/` · `/shop/` · `/trial/` · `/enquiry/`
 Staff (`/desk/` after login): court grid `/desk/book/` · social play · members · leads · messages · shop counter, orders, stock · bar tables, kitchen screen, shift, day report
 Owner: dashboard `/owner/dashboard/` · invoices · GST summary · payroll · leave approvals

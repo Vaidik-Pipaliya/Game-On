@@ -94,3 +94,37 @@ class MoneyFormatTests(TestCase):
             ["₹0", "₹50", "₹1,200", "₹1,25,000", "₹1,23,45,678.50", "-₹26,400", "₹0.99"],
         )
         self.assertEqual(rupees_input(135050), "1350.50")
+
+
+class MenuVisibilityTests(TestCase):
+    """The sidebar/desk only *shows* what a role may use (the pages enforce permissions themselves)."""
+
+    def flags(self, role, path="/desk/"):
+        user = User.objects.create(username=role, email=f"{role}@example.com", role=role)
+        self.client.force_login(user)
+        context = self.client.get(path).context
+        return {k: context[k] for k in ("can_courts", "can_shop", "can_bar", "can_owner")}
+
+    def test_each_role_sees_only_its_sections(self):
+        expected = {
+            "owner": (True, True, True, True),
+            "front_desk": (True, True, False, False),
+            "shop_staff": (False, True, False, False),
+            "bar_staff": (False, False, True, False),
+        }
+        for role, values in expected.items():
+            with self.subTest(role=role):
+                flags = self.flags(role)
+                self.assertEqual(tuple(flags.values()), values)
+                User.objects.all().delete()
+
+    def test_signed_out_visitor_gets_the_public_shell(self):
+        context = self.client.get("/").context
+        self.assertNotIn("staff_shell", context)
+        self.assertIn("club", context)
+
+    def test_staff_get_sidebar_only_on_staff_pages(self):
+        user = User.objects.create(username="o", email="o@example.com", role="owner")
+        self.client.force_login(user)
+        self.assertTrue(self.client.get("/desk/").context["staff_shell"])
+        self.assertFalse(self.client.get("/plans/").context["staff_shell"])

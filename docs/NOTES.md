@@ -163,3 +163,12 @@
 - A role matrix checks that each staff role is refused (403) the pages that belong to other roles, that only the owner reaches `/owner/*`, and that a plain member can reach no `/desk/`, `/bar/` or `/owner/` page.
 - Result: no gaps, but it did show that six public read-only pages accepted a POST (harmless, ignored); they are now GET/HEAD only (405 otherwise).
 - Manual scan: only two `csrf_exempt` views (Razorpay webhook = HMAC signature; cron = secret header), no `|safe`/`mark_safe`, no raw SQL, no `eval`/`exec`, no hard-coded secrets, every POST form carries a CSRF token, `DEBUG` defaults to off.
+
+### UI redesign (branch `ui-redesign`)
+- Look-and-feel only: every template was restyled from the Stitch designs; **no models, views, services or migrations changed**. The only Python added is `accounts/context.py` (a context processor) plus two settings lines.
+- One stylesheet `static/css/club.css` holds the design tokens (court blue, ball yellow, status colours, 6px/10px radii) and overrides Bootstrap variables, so pages use plain Bootstrap classes plus a few of ours (`panel`, `page-head`, `chip`, `kpi`, `tile`).
+- Two layouts in `templates/base.html`: top bar (public + members, bottom tab bar on phones) and sidebar (staff pages under /desk/, /bar/, /owner/, /staff/; slides in on mobile).
+- `accounts/context.py` only decides what menu items to *show* (`can_courts`, `can_shop`, `can_bar`, `can_owner`). Each page still checks the role on the server; `config/test_access.py` proves it.
+- Icons are Material Symbols loaded as a subset (`icon_names=` in the font URL), so only the ~80 icons we use are downloaded. **Adding a new icon name means adding it to that list in base.html.**
+- Judge Q&A: *Does the redesign risk the booking logic?* No, templates keep the same forms, URLs and context variables, and all tests pass. *Why no React/Tailwind?* CLAUDE.md rule: Bootstrap templates and vanilla JS only. *How do you know staff can't see other roles' pages?* Menu hiding is cosmetic; the access-matrix test hits every URL per role.
+

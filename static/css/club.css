@@ -365,3 +365,8 @@ table.cgrid { border-collapse: separate; border-spacing: 0; font-size: .75rem; w
 .member-head { padding: 1.25rem 1.5rem; border-left: 4px solid var(--tier, var(--line)); }
 .avatar-lg { width: 56px; height: 56px; font-size: 1.25rem; background: var(--tier, var(--court-700)); }
 .renew-box { background: var(--court-100); border-radius: 10px; padding: .75rem 1rem; }
+
+/* ---------- Phone safety: wide tables scroll inside their own box, never widen the page ---------- */
+.page, .shell-staff .page { min-width: 0; width: 100%; }
+.shell-main { min-width: 0; }
+.row > * { min-width: 0; }
