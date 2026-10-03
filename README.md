@@ -45,6 +45,10 @@ Each of these is a rule that **cannot be broken by a race, a double-click or a r
 7. **One pricing function** (`members/pricing.py: price_for`) for courts, shop and bar. Integer paise, no floats; expired members fall back to walk-in prices automatically; the price is frozen on the booking or order line.
 8. **Messages never break bookings.** WhatsApp/email go out via `transaction.on_commit`; every attempt is logged, and failures fall back to email and can be retried.
 9. **Database-level rules elsewhere too:** one open tab per table, one open shift per person, unique payroll per employee per month, unique invoice numbers with retry.
+10. **A payment hold the database enforces.** While a member pays online, their slot is a `held` booking covered by the same exclusion constraint, so nobody can take it; holds expire by themselves, and a late payment is re-confirmed or refunded. Test: 20 members race to hold one slot → exactly 1.
+11. **A waitlist that can't be jumped.** A freed slot becomes a 30-minute *held booking* for the first person in line (so it reuses guarantee 10), then passes on if not confirmed; a conditional UNIQUE constraint prevents queueing twice.
+12. **Refunds that can't be forgotten or doubled.** The ledger refund and a "refund pending" mark are saved in the cancellation's own transaction; Razorpay is asked after commit, under a row lock, once. Failures are visible and retryable.
+13. **An audit trail written in the same transaction as the action**, append-only (edits and deletes raise), covering refunds, stock, payroll, leave, invoices and role changes.
 
 **322 automated tests** (Django `TestCase`, real PostgreSQL, real threads for the concurrency tests).
 
