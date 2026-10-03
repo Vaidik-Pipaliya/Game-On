@@ -167,6 +167,11 @@ class ShopScreenTests(ShopFixtures, TestCase):
         self.assertContains(response, 'src="https://example.com/shoe.jpg"')
         self.assertContains(response, "product-img")  # products without a link still get an icon tile
 
+    def test_catalog_has_live_search(self):
+        response = self.client.get(reverse("shop_catalog"))
+        self.assertContains(response, 'data-search=".shop-item"')
+        self.assertContains(response, "js/list_search.js")
+
     def test_add_to_cart_then_checkout_requires_login(self):
         self.client.post(reverse("shop_cart_add"), {"variant": self.balls.pk, "quantity": 2})
         self.assertEqual(self.client.session["cart"], {str(self.balls.pk): 2})

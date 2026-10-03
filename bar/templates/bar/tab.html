@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 {% block title %}Tab #{{ tab.pk }} | Champions Club{% endblock %}
 {% block content %}
 <a href="{% url 'bar_tables' %}" class="small text-decoration-none"><span class="msym">arrow_back</span> Tables</a>
@@ -11,11 +11,17 @@
 <div class="row g-4">
   {% if tab.status == "open" %}
   <div class="col-lg-7">
+    <div class="search-box mb-3">
+      <span class="msym" aria-hidden="true">search</span>
+      <input type="search" class="form-control" placeholder="Find an item, e.g. chai" aria-label="Find a menu item"
+             data-search=".tab-item" data-empty="tab-no-match">
+    </div>
     {% for category, items in menu %}
+      <div data-search-group>
       <div class="section-kicker">{{ category }}</div>
       <div class="d-flex flex-wrap gap-2 mb-3">
         {% for item in items %}
-          <form method="post" action="{% url 'bar_tab_action' tab.pk 'add' %}">{% csrf_token %}
+          <form method="post" action="{% url 'bar_tab_action' tab.pk 'add' %}" class="tab-item" data-name="{{ item.name|lower }} {{ category|lower }}">{% csrf_token %}
             <input type="hidden" name="item" value="{{ item.pk }}">
             <button class="btn btn-outline-primary" style="min-width:120px;min-height:72px">
               {{ item.name }}<br><span class="small">{{ item.price_paise|rupees }}</span>
@@ -23,7 +29,9 @@
           </form>
         {% endfor %}
       </div>
+      </div>
     {% endfor %}
+    <p id="tab-no-match" class="text-muted" hidden>No menu item matches.</p>
   </div>
   {% endif %}
 
@@ -75,3 +83,5 @@
   </div>
 </div>
 {% endblock %}
+
+{% block scripts %}<script src="{% static 'js/list_search.js' %}"></script>{% endblock %}

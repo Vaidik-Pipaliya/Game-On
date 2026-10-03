@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 {% block title %}Gear shop | Champions Club{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -11,7 +11,12 @@
   <a href="{% url 'shop_cart' %}" class="btn btn-outline-primary"><span class="msym">shopping_bag</span>Cart <span class="chip chip-primary">{{ request.session.cart|length }}</span></a>
 </div>
 
-<div class="panel panel-pad mb-3">
+<div class="panel panel-pad mb-3 d-flex flex-wrap gap-3 align-items-center">
+  <div class="search-box flex-grow-1">
+    <span class="msym" aria-hidden="true">search</span>
+    <input type="search" class="form-control" placeholder="Search the shop, e.g. racket or shoes" aria-label="Search the shop"
+           data-search=".shop-item" data-empty="shop-no-match">
+  </div>
   <div class="seg">
     <a class="{% if not category %}active{% endif %}" href="{% url 'shop_catalog' %}">All</a>
     {% for value, label in categories %}<a class="{% if category == value %}active{% endif %}" href="?category={{ value }}">{{ label }}</a>{% endfor %}
@@ -23,7 +28,7 @@
 
 <div class="row g-3">
   {% for item in items %}
-  <div class="col-sm-6 col-xl-4">
+  <div class="col-sm-6 col-xl-4 shop-item" data-name="{{ item.product.name|lower }} {{ item.product.get_category_display|lower }}">
     <article class="product">
       <div class="product-img">
         {% if item.product.image_url %}<img src="{{ item.product.image_url }}" alt="{{ item.product.name }}" loading="lazy" referrerpolicy="no-referrer">
@@ -66,8 +71,10 @@
   <div class="col-12"><div class="panel panel-pad text-center text-muted">No products in this category yet.</div></div>
   {% endfor %}
 </div>
+<div id="shop-no-match" class="panel panel-pad text-center text-muted mt-3" hidden>No products match your search.</div>
 {% endblock %}
 {% block scripts %}
+<script src="{% static 'js/list_search.js' %}"></script>
 <script>
   // Preselect the first size that is in stock, so one tap on "Add to cart" always works.
   document.querySelectorAll(".size-group").forEach(function (group) {

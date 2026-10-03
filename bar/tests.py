@@ -253,6 +253,13 @@ class MenuTests(BarFixtures, TestCase):
         self.assertContains(response, "100% vegetarian kitchen")
         self.assertContains(response, "local_bar")  # Beer has no picture: bar icon instead
 
+    def test_menu_and_tab_screens_have_live_search(self):
+        public = self.client.get(reverse("cafe"))
+        self.assertContains(public, 'data-search=".menu-item"')
+        self.assertContains(public, 'data-name="burger snacks"')
+        tab = open_tab(table=self.t1)
+        self.assertContains(self.client.get(reverse("bar_tab", args=[tab.pk])), 'data-search=".tab-item"')
+
     def test_front_desk_cannot_edit_the_menu(self):
         self.client.force_login(User.objects.create(username="d", email="d@example.com", role="front_desk"))
         self.assertEqual(self.client.get(reverse("bar_menu")).status_code, 403)

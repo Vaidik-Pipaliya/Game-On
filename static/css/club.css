@@ -388,3 +388,9 @@ table.cgrid { border-collapse: separate; border-spacing: 0; font-size: .75rem; w
 .menu-card.is-sold-out .product-price { color: var(--ink-600); }
 .sold-out-flag { position: absolute; top: .6rem; left: .6rem; background: var(--ink-900); color: #fff; font-size: .75rem; font-weight: 700; padding: .2rem .55rem; border-radius: 999px; }
 @media (max-width: 575.98px) { .menu-card { padding: .9rem; } .menu-card .product-img { margin: -.9rem -.9rem .75rem; } }
+
+/* ---------- Search box (live filter, static/js/list_search.js) ---------- */
+.search-box { position: relative; min-width: 220px; }
+.search-box .msym { position: absolute; left: .7rem; top: 50%; transform: translateY(-50%); color: var(--ink-600); pointer-events: none; }
+.search-box .form-control { padding-left: 2.3rem; }
+[data-search-group][hidden], .menu-item[hidden], .shop-item[hidden], .tab-item[hidden] { display: none !important; }

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 {% block title %}Cafe and bar menu | Champions Club{% endblock %}
 {% block description %}The Champions Club cafe: a pure vegetarian kitchen with coffee, snacks, meals and drinks, and member discounts.{% endblock %}
 {% block content %}
@@ -17,11 +17,18 @@
 </div>
 <p class="small text-muted mb-3"><span class="msym">bolt</span> Order and pay online, then collect at the cafe counter. Or order at your table and pay at the end, as always.</p>
 
-{% if menu|length > 1 %}
-<div class="panel panel-pad mb-3">
+{% if menu %}
+<div class="panel panel-pad mb-3 d-flex flex-wrap gap-3 align-items-center">
+  <div class="search-box flex-grow-1">
+    <span class="msym" aria-hidden="true">search</span>
+    <input type="search" class="form-control" placeholder="Search the menu, e.g. paneer or coffee" aria-label="Search the menu"
+           data-search=".menu-item" data-empty="menu-no-match">
+  </div>
+  {% if menu|length > 1 %}
   <div class="seg">
     {% for category, items in menu %}<a href="#cat-{{ forloop.counter }}">{{ category }}</a>{% endfor %}
   </div>
+  {% endif %}
 </div>
 {% endif %}
 
@@ -35,10 +42,11 @@
 {% endif %}
 
 {% for category, items in menu %}
+<section data-search-group>
 <h2 class="panel-title mb-3 mt-4" id="cat-{{ forloop.counter }}" style="scroll-margin-top:5rem">{{ category }}</h2>
 <div class="row g-3">
   {% for item in items %}
-  <div class="col-6 col-md-4 col-xl-3">
+  <div class="col-6 col-md-4 col-xl-3 menu-item" data-name="{{ item.name|lower }} {{ category|lower }}">
     <article class="product menu-card {% if not item.is_available %}is-sold-out{% endif %}">
       <div class="product-img">
         {% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.name }}" loading="lazy" referrerpolicy="no-referrer">
@@ -59,7 +67,11 @@
   </div>
   {% endfor %}
 </div>
+</section>
 {% empty %}
 <div class="panel panel-pad text-center text-muted">The menu is being updated. Please ask at the counter.</div>
 {% endfor %}
+<div id="menu-no-match" class="panel panel-pad text-center text-muted mt-3" hidden>No dishes match your search.</div>
 {% endblock %}
+
+{% block scripts %}<script src="{% static 'js/list_search.js' %}"></script>{% endblock %}
