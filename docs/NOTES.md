@@ -14,3 +14,5 @@
 - New users are `member`. The owner promotes staff by changing `role` in admin. A member registered at the desk with the same email is linked to the new user on first login.
 - `role_required(*roles)` in `accounts/permissions.py` checks the role on the server for every request (403 page for wrong role, redirect to login if anonymous).
 - Tests mock the Firebase call, so they run without internet or keys.
+- Login uses Google's "Sign in with Google" button (GIS), then `signInWithCredential` in Firebase, then our server verifies the Firebase token. We moved off Firebase's popup helper because it needs HTTPS and Chrome partitions its storage.
+- Django's default `Cross-Origin-Opener-Policy: same-origin` broke the Google popup (blank window / popup-closed-by-user). We set `SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"`.

@@ -86,12 +86,18 @@ USE_TZ = True
 
 LOGIN_URL = "/login/"
 
+# Django's default ("same-origin") cuts the Google sign-in popup off from our page,
+# so it can never hand back the result. This value still blocks unrelated sites.
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
+
 # Firebase: the service-account file stays on the server; the web config values are public by design.
 # Relative paths are resolved from the project folder, so it works from any working directory.
 FIREBASE_CREDENTIALS_PATH = BASE_DIR / os.environ.get("FIREBASE_CREDENTIALS_PATH", "firebase-service-account.json")
 FIREBASE_WEB_API_KEY = os.environ.get("FIREBASE_WEB_API_KEY", "")
 FIREBASE_AUTH_DOMAIN = os.environ.get("FIREBASE_AUTH_DOMAIN", "")
 FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
+# Public "Web client" ID of the Firebase project; used by Google's sign-in button.
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]

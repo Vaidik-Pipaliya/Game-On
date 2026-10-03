@@ -3,7 +3,7 @@
 {% block content %}
 <div class="col-md-5 mx-auto text-center">
   <h1 class="h3 mb-3">Log in</h1>
-  <button id="google-btn" class="btn btn-primary btn-lg w-100">Continue with Google</button>
+  <div id="google-btn" class="d-flex justify-content-center"></div>
   <div id="login-error" class="alert alert-danger mt-3 d-none" role="alert"></div>
 </div>
 {% csrf_token %}
@@ -14,23 +14,26 @@
 {% block scripts %}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-  firebase.initializeApp(JSON.parse(document.getElementById("firebase-config").textContent));
-  const errorBox = document.getElementById("login-error");
+  const config = JSON.parse(document.getElementById("firebase-config").textContent);
   const nextUrl = JSON.parse(document.getElementById("next-url").textContent);
+  const errorBox = document.getElementById("login-error");
+  firebase.initializeApp(config);
 
   function showError(text) {
     errorBox.textContent = text;
     errorBox.classList.remove("d-none");
   }
 
-  document.getElementById("google-btn").addEventListener("click", async () => {
+  // 3. Google gives us its own ID token; Firebase exchanges it for a Firebase ID token.
+  async function onGoogleCredential(googleResponse) {
     errorBox.classList.add("d-none");
     try {
-      // 1. Google popup -> Firebase gives us a signed ID token.
-      const result = await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      const credential = firebase.auth.GoogleAuthProvider.credential(googleResponse.credential);
+      const result = await firebase.auth().signInWithCredential(credential);
       const idToken = await result.user.getIdToken();
-      // 2. Send the token to Django, which verifies it and starts a session.
+      // 4. Django verifies the Firebase token and starts a normal session.
       const response = await fetch("{% url 'firebase_login' %}", {
         method: "POST",
         headers: {
@@ -43,8 +46,16 @@
       if (!response.ok) return showError(data.error);
       window.location.href = data.next;
     } catch (err) {
-      showError("Google sign-in was cancelled or failed. Please try again.");
+      console.error(err);
+      showError("Google sign-in failed. Please try again. (" + (err.code || err.message) + ")");
     }
+  }
+
+  // 1-2. Draw Google's sign-in button once its script has loaded.
+  window.addEventListener("load", () => {
+    if (!window.google) return showError("Could not load Google sign-in. Check your internet connection.");
+    google.accounts.id.initialize({ client_id: config.googleClientId, callback: onGoogleCredential });
+    google.accounts.id.renderButton(document.getElementById("google-btn"), { theme: "filled_blue", size: "large", text: "continue_with" });
   });
 </script>
 {% endblock %}

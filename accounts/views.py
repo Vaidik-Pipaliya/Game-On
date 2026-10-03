@@ -20,6 +20,7 @@ def login_page(request):
         "apiKey": settings.FIREBASE_WEB_API_KEY,
         "authDomain": settings.FIREBASE_AUTH_DOMAIN,
         "projectId": settings.FIREBASE_PROJECT_ID,
+        "googleClientId": settings.GOOGLE_OAUTH_CLIENT_ID,
     }
     return render(request, "accounts/login.html", {"firebase_config": firebase_config, "next": request.GET.get("next", "/")})
 
