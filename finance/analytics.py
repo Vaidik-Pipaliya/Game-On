@@ -1,8 +1,11 @@
-"""Simple analytics with pandas: revenue trend, court utilisation, peak hours."""
+"""Simple analytics with pandas: revenue trend, court utilisation, peak hours.
+
+pandas is imported inside each function, not at the top: it takes ~0.6 s to load, and only the
+owner dashboard needs it. Importing it at the top would add that to every cold start of every page.
+"""
 
 from datetime import timedelta
 
-import pandas as pd
 from django.conf import settings
 
 from config.clock import local_day_bounds
@@ -15,11 +18,15 @@ from .reports import REVENUE_KINDS
 
 def _local(series):
     """UTC timestamps from the database -> club-local time."""
+    import pandas as pd
+
     return pd.to_datetime(series, utc=True).dt.tz_convert(settings.TIME_ZONE)
 
 
 def revenue_trend(today, days=30):
     """Net revenue per day for the last `days` days, including days with no sales (as 0)."""
+    import pandas as pd
+
     first = today - timedelta(days=days - 1)
     start, end = local_day_bounds(first, days)
     rows = Ledger.objects.filter(kind__in=REVENUE_KINDS, created_at__gte=start, created_at__lt=end)
@@ -34,6 +41,8 @@ def revenue_trend(today, days=30):
 
 
 def _bookings_frame(today, days):
+    import pandas as pd
+
     first = today - timedelta(days=days - 1)
     start, end = local_day_bounds(first, days)
     # Whole-court rows occupy the court (including the block row of a social session).
@@ -46,6 +55,8 @@ def _bookings_frame(today, days):
 
 def court_utilisation(today, days=30):
     """% of open hours each court was booked over the last `days` days."""
+    import pandas as pd
+
     open_hours = (CLOSE_HOUR - OPEN_HOUR) * days
     courts = list(Court.objects.filter(is_active=True).order_by("name").values_list("name", flat=True))
     frame = _bookings_frame(today, days)
@@ -58,6 +69,8 @@ def court_utilisation(today, days=30):
 
 def peak_hours(today, days=30):
     """How many sessions started in each hour of the day: shows when the club is busiest."""
+    import pandas as pd
+
     hours = list(range(OPEN_HOUR, CLOSE_HOUR))
     frame = _bookings_frame(today, days)
     counts = pd.Series(0, index=hours)

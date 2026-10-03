@@ -12,6 +12,10 @@ What we changed for Vercel (all standard library):
 | No long-running cron process | `vercel.json` schedules `GET /cron/<job>/`; the view only runs if `Authorization: Bearer <CRON_SECRET>` matches |
 | HTTPS at Vercel's edge | `SECURE_PROXY_SSL_HEADER` + secure cookies + HSTS when `DJANGO_DEBUG=0` |
 
+## Keep the site and the database in the same region (important for speed)
+
+Vercel runs new projects in Washington D.C. by default. A Django page makes many database queries, and every query is a round trip, so a site in the US talking to a Neon database in Singapore is several times slower. `vercel.json` sets `"regions": ["sin1"]` to match a Neon project in **Singapore**. If your Neon project is elsewhere, change it: Mumbai `bom1`, Frankfurt `fra1`, US East `iad1`. Hobby allows one region.
+
 ## Steps
 
 1. **Database (Neon).** In Vercel: Project → Storage → add **Neon**. It creates `DATABASE_URL` (pooled, good for serverless). Neon supports the `btree_gist` extension we need.
