@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}My leave{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">My leave</h1>
+{% if not employee %}
+  <p class="text-muted">Your login isn't linked to an employee record yet. Ask the owner to link it in admin (Employees &rarr; User).</p>
+{% else %}
+  <p>You have <strong>{{ balance }}</strong> of {{ allowance }} days left this year.</p>
+  <form method="post" novalidate class="bg-white border rounded p-3 col-lg-6 mb-4">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+    <div class="row g-2">
+      {% for field in form %}
+        <div class="col-md-4"><label class="form-label small" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+      {% endfor %}
+    </div>
+    <button class="btn btn-primary mt-2">Request leave</button>
+  </form>
+  <table class="table bg-white border">
+    <thead><tr><th>From</th><th>To</th><th>Reason</th><th>Status</th></tr></thead>
+    <tbody>{% for r in requests %}<tr><td>{{ r.from_date|date:"j M Y" }}</td><td>{{ r.to_date|date:"j M Y" }}</td><td>{{ r.reason|default:"-" }}</td><td>{{ r.get_status_display }}</td></tr>
+    {% empty %}<tr><td colspan="4" class="text-muted text-center">No requests yet.</td></tr>{% endfor %}</tbody>
+  </table>
+{% endif %}
+{% endblock %}

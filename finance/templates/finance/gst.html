@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}GST summary{% endblock %}
+{% block content %}
+{% include "finance/_owner_nav.html" %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h3 mb-0">GST summary &middot; {{ month|date:"F Y" }}</h1>
+  <form class="d-flex gap-2">
+    <input type="month" name="month" value="{{ month|date:'Y-m' }}" class="form-control form-control-sm" aria-label="Month">
+    <button class="btn btn-sm btn-outline-primary">Show</button>
+    <a class="btn btn-sm btn-outline-secondary" href="?month={{ month|date:'Y-m' }}&amp;format=csv">CSV</a>
+  </form>
+</div>
+<div class="table-responsive bg-white border rounded">
+  <table class="table mb-0" style="font-variant-numeric: tabular-nums">
+    <thead><tr><th>GST rate</th><th class="text-end">Invoices</th><th class="text-end">Taxable value</th><th class="text-end">CGST</th><th class="text-end">SGST</th><th class="text-end">Total</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr><td>{{ r.rate }}%</td><td class="text-end">{{ r.count }}</td><td class="text-end">{{ r.taxable|rupees }}</td><td class="text-end">{{ r.cgst|rupees }}</td><td class="text-end">{{ r.sgst|rupees }}</td><td class="text-end">{{ r.total|rupees }}</td></tr>
+    {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No invoices issued this month.</td></tr>{% endfor %}
+    </tbody>
+    {% if rows %}<tfoot><tr><th>Total</th><th class="text-end">{{ totals.count }}</th><th class="text-end">{{ totals.taxable|rupees }}</th><th class="text-end">{{ totals.cgst|rupees }}</th><th class="text-end">{{ totals.sgst|rupees }}</th><th class="text-end">{{ totals.total|rupees }}</th></tr></tfoot>{% endif %}
+  </table>
+</div>
+<p class="small text-muted mt-2">Tax payable for the month = CGST + SGST = <strong>{{ totals.cgst|add:totals.sgst|rupees }}</strong>. Based on invoices issued; filing returns is done outside this system.</p>
+{% endblock %}

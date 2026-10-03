@@ -4,14 +4,13 @@ from datetime import date
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-
-from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
 
 from accounts.permissions import STAFF_ROLES, role_required
 from config.clock import local_day_bounds
@@ -19,9 +18,11 @@ from courts.models import Booking
 from shop.models import Order
 
 from .analytics import court_utilisation, peak_hours, revenue_trend
-from .models import Ledger, Method, Payment, Source
+from .forms import InvoiceForm
+from .invoicing import create_invoice, gst_summary, mark_invoice_paid
+from .models import Invoice, Ledger, Method, Payment, Source
 from .reports import amounts_owed, expenses, period_ranges, period_summary
-from .services import checkout_signature_is_valid, mark_payment_captured, webhook_signature_is_valid
+from .services import DESK_METHODS, checkout_signature_is_valid, mark_payment_captured, webhook_signature_is_valid
 
 
 def _is_staff(user):
@@ -195,3 +196,58 @@ def export_bookings(request):
     )
     return _csv_response(f"bookings_{first}_{last}.csv",
                          ["start", "court", "kind", "status", "who", "price_rupees", "paid", "method"], rows)
+
+
+# ---- Invoices and GST ----
+
+def _parse_month(value, today):
+    try:
+        year, month = (int(part) for part in value.split("-"))
+        return date(year, month, 1)
+    except (AttributeError, ValueError):
+        return today.replace(day=1)
+
+
+@owner_only
+def invoice_list(request):
+    form = InvoiceForm(request.POST or None, initial={"issued_on": timezone.localdate(), "gst_pct": 18})
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
+        try:
+            invoice = create_invoice(
+                customer_name=data["customer_name"], customer_gstin=data["customer_gstin"],
+                description=data["description"], amount_paise=round(data["amount_rupees"] * 100),
+                gst_pct=int(data["gst_pct"]), issued_on=data["issued_on"], source=data["source"],
+                member=data["member_phone"],
+            )
+        except ValidationError as error:
+            form.add_error(None, error.messages)
+        else:
+            messages.success(request, f"Invoice {invoice.number} created.")
+            return redirect("invoice_detail", pk=invoice.pk)
+    invoices = Invoice.objects.order_by("-issued_on", "-number")[:50]
+    return render(request, "finance/invoices.html", {"form": form, "invoices": invoices})
+
+
+@owner_only
+def invoice_detail(request, pk):
+    invoice = get_object_or_404(Invoice, pk=pk)
+    if request.method == "POST":
+        try:
+            mark_invoice_paid(invoice, request.POST.get("payment_method"))
+        except ValidationError as error:
+            messages.error(request, error.messages[0])
+        else:
+            messages.success(request, f"Invoice {invoice.number} marked paid.")
+        return redirect("invoice_detail", pk=pk)
+    return render(request, "finance/invoice_detail.html", {"invoice": invoice, "club": settings.CLUB, "methods": DESK_METHODS})
+
+
+@owner_only
+def gst_report(request):
+    month = _parse_month(request.GET.get("month"), timezone.localdate())
+    rows, totals = gst_summary(month.year, month.month)
+    if request.GET.get("format") == "csv":
+        lines = [(f"{r['rate']}%", r["count"], *(f"{r[k] / 100:.2f}" for k in ("taxable", "cgst", "sgst", "total"))) for r in rows]
+        return _csv_response(f"gst_{month:%Y_%m}.csv", ["gst_rate", "invoices", "taxable", "cgst", "sgst", "total"], lines)
+    return render(request, "finance/gst.html", {"month": month, "rows": rows, "totals": totals})

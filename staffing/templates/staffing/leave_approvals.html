@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Leave approvals{% endblock %}
+{% block content %}
+{% include "finance/_owner_nav.html" %}
+<h1 class="h3 mb-3">Leave requests</h1>
+<div class="table-responsive bg-white border rounded mb-4">
+  <table class="table mb-0 align-middle">
+    <thead><tr><th>Employee</th><th>From</th><th>To</th><th>Reason</th><th>Days left this year</th><th></th></tr></thead>
+    <tbody>
+    {% for leave, balance in pending %}
+      <tr><td>{{ leave.employee.full_name }}</td><td>{{ leave.from_date|date:"j M" }}</td><td>{{ leave.to_date|date:"j M" }}</td><td>{{ leave.reason|default:"-" }}</td><td>{{ balance }}</td>
+        <td class="text-end">
+          <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="leave" value="{{ leave.pk }}"><button name="decision" value="approve" class="btn btn-sm btn-success">Approve</button></form>
+          <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="leave" value="{{ leave.pk }}"><button name="decision" value="reject" class="btn btn-sm btn-outline-danger">Reject</button></form>
+        </td></tr>
+    {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No requests waiting.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<h2 class="h5">Recent decisions</h2>
+<ul class="small">{% for l in decided %}<li>{{ l.employee.full_name }}: {{ l.from_date|date:"j M" }} to {{ l.to_date|date:"j M" }}, {{ l.get_status_display }}{% if l.decided_by %} by {{ l.decided_by.email }}{% endif %}</li>{% empty %}<li class="text-muted">None yet.</li>{% endfor %}</ul>
+{% endblock %}

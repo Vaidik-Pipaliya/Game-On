@@ -74,18 +74,28 @@ class Ledger(models.Model):
 
 
 class Invoice(models.Model):
-    number = models.CharField(max_length=20, unique=True)
+    GST_RATES = (0, 5, 12, 18, 28)
+
+    number = models.CharField(max_length=20, unique=True)  # CC/2026/0001, never reused
     member = models.ForeignKey(Member, null=True, blank=True, on_delete=models.PROTECT)
     customer_name = models.CharField(max_length=120)
+    customer_gstin = models.CharField(max_length=15, blank=True, help_text="For business customers")
     description = models.CharField(max_length=200)
+    source = models.CharField(max_length=12, choices=Source.choices, default=Source.MEMBERSHIP)
     amount_paise = models.PositiveIntegerField(help_text="Amount before GST")
     gst_pct = models.PositiveSmallIntegerField(default=18)
     is_paid = models.BooleanField(default=False)
+    paid_method = models.CharField(max_length=10, blank=True)
     issued_on = models.DateField()
 
     @property
     def gst_paise(self):
         return (self.amount_paise * self.gst_pct + 50) // 100  # integer maths, rounded half up
+
+    @property
+    def half_rate(self):
+        """CGST and SGST rate as shown on the invoice: 18 -> "9", 5 -> "2.5"."""
+        return f"{self.gst_pct / 2:g}"
 
     @property
     def cgst_paise(self):

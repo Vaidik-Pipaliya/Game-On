@@ -6,6 +6,8 @@
 <div class="list-group col-md-5">
   {% if su or role == "owner" %}
     <a href="{% url 'owner_dashboard' %}" class="list-group-item list-group-item-action fw-bold">Owner dashboard: revenue, owed, analytics</a>
+    <a href="{% url 'invoice_list' %}" class="list-group-item list-group-item-action">Invoices and GST summary</a>
+    <a href="{% url 'payroll' %}" class="list-group-item list-group-item-action">Payroll and leave approvals</a>
   {% endif %}
   {% if su or role == "owner" or role == "front_desk" %}
     <a href="{% url 'booking_grid' %}" class="list-group-item list-group-item-action">Court grid: book and cancel</a>
@@ -24,6 +26,7 @@
     <a href="{% url 'bar_kitchen' %}" class="list-group-item list-group-item-action">Bar: kitchen screen</a>
     <a href="{% url 'bar_day_report' %}" class="list-group-item list-group-item-action">Bar: shift and day report</a>
   {% endif %}
+  <a href="{% url 'my_leave' %}" class="list-group-item list-group-item-action">My leave</a>
 </div>
 {% endwith %}
 {% endblock %}

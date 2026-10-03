@@ -107,3 +107,10 @@
 - `manage.py send_booking_reminders` (cron every 15 min) reminds members of sessions in the next 2 hours, once per booking.
 - Renewal reminders (M3) and low-stock alerts (M8, emailed to owner + shop staff after commit) now go through the same logged email path.
 - Email: console in development; Gmail SMTP via env (`EMAIL_HOST_USER` + a Gmail **app password**). WhatsApp off when no token is set.
+
+## M13 - Invoices (GST), employees, payroll, leave, GST summary
+- **Invoices:** numbers `CC/2026/0001`, sequential per year, never reused. Two invoices created at once could pick the same next number: the unique constraint rejects one and we retry with the next (tested). GST rates limited to 0/5/12/18/28%. GST = amount x rate, rounded half up in integer paise; CGST = SGST = half (the odd paisa goes to SGST so halves always add up). Printable HTML invoice ("Print or save as PDF" in the browser, no PDF library). Marking paid writes the total incl. GST to the ledger once (row lock).
+- **GST summary** per month grouped by rate: taxable, CGST, SGST, total; CSV export. Based on invoices issued. Limitation: retail/bar/court sales are treated as GST-inclusive prices and are not in this summary; filing returns is outside the system.
+- **Payroll:** `run_payroll(month)` creates one row per employee (gross = monthly salary, flat 12% deduction, net). `(employee, month)` is unique, so running twice never double-pays. Paying a salary writes an **expense** row (negative) - it reduces cash but never revenue; the dashboard shows expenses separately. No PF/ESI/TDS (out of scope per PRD).
+- **Leave:** 12 days a year; requests can't overlap pending/approved leave or exceed the balance; the owner approves or rejects, and approval **re-checks the balance** (another request may have been approved in between). Staff request leave at `/staff/leave/` once their login is linked to an Employee in admin.
+- Owner pages share one sub-navigation: Dashboard, Invoices, GST summary, Payroll, Leave approvals.
