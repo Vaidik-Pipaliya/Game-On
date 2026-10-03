@@ -9,8 +9,13 @@
     <h1 class="page-title">Menu</h1>
     <p class="page-sub">Order at the counter or from your table. Prices include taxes.</p>
   </div>
-  <span class="chip chip-ok"><span class="veg-mark" aria-hidden="true"></span>100% vegetarian kitchen</span>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <span class="chip chip-ok"><span class="veg-mark" aria-hidden="true"></span>100% vegetarian kitchen</span>
+    {% if user.is_authenticated %}<a href="{% url 'cafe_my_orders' %}" class="btn btn-outline-primary"><span class="msym">receipt</span>My cafe orders</a>{% endif %}
+    <a href="{% url 'cafe_cart' %}" class="btn btn-primary"><span class="msym">shopping_bag</span>Your order <span class="chip chip-ball">{{ cart_count }}</span></a>
+  </div>
 </div>
+<p class="small text-muted mb-3"><span class="msym">bolt</span> Order and pay online, then collect at the cafe counter. Or order at your table and pay at the end, as always.</p>
 
 {% if menu|length > 1 %}
 <div class="panel panel-pad mb-3">
@@ -41,7 +46,15 @@
         {% if not item.is_available %}<span class="sold-out-flag">Sold out today</span>{% endif %}
       </div>
       <h3 class="h6 mb-1 d-flex gap-2 align-items-start"><span class="veg-mark mt-1" title="Vegetarian" aria-label="Vegetarian"></span>{{ item.name }}</h3>
-      <div class="product-price mt-auto">{{ item.price_paise|rupees }}</div>
+      <div class="d-flex justify-content-between align-items-center gap-2 mt-auto">
+        <div class="product-price">{{ item.price_paise|rupees }}</div>
+        {% if item.is_available %}
+        <form method="post" action="{% url 'cafe_cart_add' %}">{% csrf_token %}
+          <input type="hidden" name="item" value="{{ item.pk }}">
+          <button class="btn btn-sm btn-outline-primary" aria-label="Add {{ item.name }} to your order"><span class="msym">add</span>Add{% if item.pk in cart_ids %} more{% endif %}</button>
+        </form>
+        {% endif %}
+      </div>
     </article>
   </div>
   {% endfor %}

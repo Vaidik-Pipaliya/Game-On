@@ -50,6 +50,8 @@ def cafe(request):
     return render(request, "crm/cafe.html", {
         "menu": [(category, list(group)) for category, group in groupby(items, key=lambda m: m.category)],
         "discounts": Plan.objects.filter(bar_discount_pct__gt=0).order_by("-bar_discount_pct"),
+        "cart_count": sum(request.session.get("cafe_cart", {}).values()),
+        "cart_ids": {int(pk) for pk in request.session.get("cafe_cart", {})},
     })
 
 

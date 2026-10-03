@@ -11,10 +11,10 @@ from accounts.audit import record as audit
 from accounts.templatetags.money import rupees
 from config.clock import local_day_bounds
 from finance.models import Ledger, Method, Source
-from finance.services import DESK_METHODS, record_payment
+from finance.services import DESK_METHODS, record_payment, record_refund, request_gateway_refund
 from members.pricing import price_for
 
-from .models import MenuItem, Shift, Tab, TabLine
+from .models import CafeOrder, CafeOrderLine, MenuItem, Shift, Tab, TabLine
 
 Bill = namedtuple("Bill", "subtotal_paise discount_paise discount_label total_paise")
 ShiftSummary = namedtuple("ShiftSummary", "shift cash_sales_paise expected_cash_paise difference_paise sales_paise")
@@ -195,3 +195,107 @@ def day_report(day):
         "voided": Tab.objects.filter(status=Tab.Status.VOID, closed_at__gte=start, closed_at__lt=end).count(),
         "open_tabs": [(tab, bill_for(tab)) for tab in open_tabs],
     }
+
+
+# ---- Cafe orders placed and paid online, collected at the counter ----
+
+MAX_PER_ITEM = 10
+
+
+def place_cafe_order(*, items, placed_by, member=None, customer_name=""):
+    """items = [(menu_item, quantity)]. Prices and the member discount are frozen now; payment comes next.
+
+    The discount is worked out on the whole order, exactly like a tab's bill, so it matches the counter.
+    """
+    if not items:
+        raise ValidationError("Your order is empty.")
+    for item, quantity in items:
+        if not 1 <= quantity <= MAX_PER_ITEM:
+            raise ValidationError(f"Order between 1 and {MAX_PER_ITEM} of {item.name}.")
+    with transaction.atomic():
+        fresh = {m.pk: m for m in MenuItem.objects.filter(pk__in=[item.pk for item, _ in items])}
+        sold_out = [item.name for item, _ in items if item.pk not in fresh or not fresh[item.pk].is_available]
+        if sold_out:
+            raise ValidationError(f"Sold out right now: {', '.join(sold_out)}. Remove it and try again.")
+        subtotal = sum(fresh[item.pk].price_paise * quantity for item, quantity in items)
+        membership = member.current_membership if member else None
+        price = price_for("bar", subtotal, membership)
+        order = CafeOrder.objects.create(
+            placed_by=placed_by, member=member,
+            customer_name=customer_name or (member.full_name if member else placed_by.email),
+            subtotal_paise=subtotal, discount_paise=subtotal - price.amount_paise, total_paise=price.amount_paise,
+        )
+        CafeOrderLine.objects.bulk_create([
+            CafeOrderLine(order=order, menu_item=fresh[item.pk], quantity=quantity, unit_price_paise=fresh[item.pk].price_paise)
+            for item, quantity in items
+        ])
+    return order
+
+
+def drop_unpaid_cafe_order(order):
+    """Online payment couldn't even start (gateway down): the order never happened. No money was taken."""
+    CafeOrder.objects.filter(pk=order.pk, status=CafeOrder.Status.AWAITING_PAYMENT).update(status=CafeOrder.Status.CANCELLED)
+
+
+def apply_cafe_payment(order_id):
+    """Called by finance.mark_payment_captured, inside its transaction, once Razorpay confirms the money.
+
+    Only now does the order go to the kitchen. The ledger row is written by the caller.
+    """
+    order = CafeOrder.objects.select_for_update().filter(pk=order_id).first()
+    if order and order.status == CafeOrder.Status.AWAITING_PAYMENT:
+        order.status = CafeOrder.Status.PREPARING
+        order.paid_at = timezone.now()
+        order.save(update_fields=["status", "paid_at"])
+
+
+def cafe_tickets(station):
+    """Paid online-order lines still to make at one station, oldest first."""
+    return (
+        CafeOrderLine.objects.filter(menu_item__station=station, is_ready=False, order__status=CafeOrder.Status.PREPARING)
+        .select_related("menu_item", "order")
+        .order_by("order__paid_at", "pk")
+    )
+
+
+def mark_cafe_line_ready(line):
+    """When the last line of an order is ready, the whole order becomes ready to collect."""
+    with transaction.atomic():
+        order = CafeOrder.objects.select_for_update().get(pk=line.order_id)
+        CafeOrderLine.objects.filter(pk=line.pk).update(is_ready=True)
+        if order.status == CafeOrder.Status.PREPARING and not order.lines.filter(is_ready=False).exists():
+            order.status = CafeOrder.Status.READY
+            order.save(update_fields=["status"])
+
+
+def _paid_order_locked(order):
+    order = CafeOrder.objects.select_for_update().get(pk=order.pk)
+    if order.status not in (CafeOrder.Status.PREPARING, CafeOrder.Status.READY):
+        raise ValidationError(f"Order #{order.pk} is {order.get_status_display().lower()}.")
+    return order
+
+
+def collect_cafe_order(order):
+    with transaction.atomic():
+        order = _paid_order_locked(order)
+        order.status = CafeOrder.Status.COLLECTED
+        order.save(update_fields=["status"])
+    return order
+
+
+def cancel_cafe_order(order, by=None):
+    """Cancel a paid order and give the money back through Razorpay (full refund).
+
+    The ledger refund and the "refund pending" mark are saved together with the cancellation; Razorpay
+    is asked after the commit, so a gateway problem can't block it (the owner can retry from the dashboard).
+    """
+    with transaction.atomic():
+        order = _paid_order_locked(order)
+        order.status = CafeOrder.Status.CANCELLED
+        order.save(update_fields=["status"])
+        record_refund(source=Source.BAR, method=Method.ONLINE, amount_paise=order.total_paise,
+                      reference_id=order.pk, note=f"Cafe online order #{order.pk} cancelled")
+        request_gateway_refund(source=Source.BAR, reference_id=order.pk)
+        audit(by, "cafe_order.cancel", order, f"Cancelled cafe order #{order.pk} and refunded {rupees(order.total_paise)}",
+              amount_paise=order.total_paise)
+    return order

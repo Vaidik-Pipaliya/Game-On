@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}My cafe orders | Champions Club{% endblock %}
+{% block content %}
+{% if orders %}<meta http-equiv="refresh" content="20">{% endif %}
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">local_cafe</span>Cafe</div><h1 class="page-title">My cafe orders</h1>
+    <p class="page-sub">This page updates by itself. Collect your order at the cafe counter when it says ready.</p></div>
+  <a href="{% url 'cafe' %}" class="btn btn-outline-primary"><span class="msym">restaurant_menu</span>Menu</a>
+</div>
+{% for order in orders %}
+  <div class="panel mb-3">
+    <div class="panel-head">
+      <h2 class="panel-title">Order #{{ order.pk }} <span class="text-muted fw-normal fs-6" style="text-transform:none">{{ order.created_at|date:"j M, H:i" }}</span></h2>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        {% if order.status == "ready" %}<span class="badge bg-success"><span class="msym">notifications</span>Ready to collect</span>
+        {% elif order.status == "preparing" %}<span class="chip chip-primary"><span class="msym">skillet</span>Being prepared</span>
+        {% elif order.status == "awaiting" %}<span class="badge bg-warning">Not paid yet</span>
+        {% elif order.status == "cancelled" %}<span class="chip chip-neutral">Cancelled, refunded</span>
+        {% else %}<span class="chip chip-neutral">{{ order.get_status_display }}</span>{% endif %}
+        <strong class="ms-1">{{ order.total_paise|rupees }}</strong>
+      </div>
+    </div>
+    <ul class="list-unstyled mb-0 px-3 py-2">
+      {% for line in order.lines.all %}<li class="summary-row border-bottom"><span>{{ line.quantity }} &times; {{ line.menu_item.name }}</span><span>{{ line.unit_price_paise|rupees }}</span></li>{% endfor %}
+      {% if order.discount_paise %}<li class="summary-row text-success"><span>Member discount</span><span>-{{ order.discount_paise|rupees }}</span></li>{% endif %}
+    </ul>
+    {% if order.payment_pk %}<div class="px-3 pb-3"><a class="btn btn-primary" href="{% url 'pay_page' order.payment_pk %}"><span class="msym">lock</span>Pay {{ order.total_paise|rupees }} now</a></div>{% endif %}
+  </div>
+{% empty %}
+  <div class="panel panel-pad text-center py-5">
+    <div class="icon-badge mx-auto mb-3"><span class="msym">local_cafe</span></div>
+    <h2 class="h4">No cafe orders yet</h2>
+    <a href="{% url 'cafe' %}" class="btn btn-primary">See the menu</a>
+  </div>
+{% endfor %}
+{% endblock %}

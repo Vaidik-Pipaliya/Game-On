@@ -11,6 +11,7 @@ urlpatterns = [
     path("desk/", include("courts.urls")),
     path("book/", include("courts.portal_urls")),
     path("bar/", include("bar.urls")),
+    path("cafe/", include("bar.cafe_urls")),
     path("", include("shop.urls")),
     path("", include("finance.urls")),
     path("", include("staffing.urls")),

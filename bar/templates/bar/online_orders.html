@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Online cafe orders | Champions Club{% endblock %}
+{% block content %}
+<meta http-equiv="refresh" content="15">
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">receipt</span>Bar and cafe</div><h1 class="page-title">Online orders</h1>
+    <p class="page-sub">Already paid online. Items appear on the kitchen and bar screens; hand the order over when it's ready. Updates every 15 seconds.</p></div>
+</div>
+<div class="row g-3 mb-4">
+  {% for order in active %}
+  <div class="col-md-6 col-xl-4">
+    <div class="ticket {% if order.status == 'ready' %}border-success{% endif %}" {% if order.status == "ready" %}style="border-left-color:var(--bs-success)"{% endif %}>
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <div><strong class="fs-5">#{{ order.pk }} &middot; {{ order.customer_name }}</strong>
+          <div class="small text-muted">Paid {{ order.paid_at|date:"H:i" }} &middot; {{ order.total_paise|rupees }}</div></div>
+        {% if order.status == "ready" %}<span class="badge bg-success">Ready</span>{% else %}<span class="chip chip-primary">Preparing</span>{% endif %}
+      </div>
+      <ul class="list-unstyled my-2">
+        {% for line in order.lines.all %}<li>{% if line.is_ready %}<span class="msym text-success">check</span>{% else %}<span class="msym text-muted">schedule</span>{% endif %} {{ line.quantity }} &times; {{ line.menu_item.name }}</li>{% endfor %}
+      </ul>
+      <div class="d-flex gap-2">
+        <form method="post" action="{% url 'bar_online_order_action' order.pk 'collect' %}" class="flex-grow-1">{% csrf_token %}
+          <button class="btn {% if order.status == 'ready' %}btn-success{% else %}btn-outline-success{% endif %} w-100"><span class="msym">task_alt</span>Collected</button>
+        </form>
+        <form method="post" action="{% url 'bar_online_order_action' order.pk 'cancel' %}" onsubmit="return confirm('Cancel order #{{ order.pk }} and refund {{ order.total_paise|rupees }} online?');">{% csrf_token %}
+          <button class="btn btn-outline-danger">Cancel &amp; refund</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12"><div class="panel panel-pad text-center py-5"><div class="icon-badge mx-auto mb-3"><span class="msym">done_all</span></div><h2 class="h4">No online orders waiting</h2></div></div>
+  {% endfor %}
+</div>
+
+<h2 class="panel-title mb-2">Recent</h2>
+<div class="panel">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>#</th><th>Paid</th><th>Customer</th><th>Status</th><th class="text-end">Total</th></tr></thead>
+      <tbody>
+      {% for o in recent %}
+        <tr><td>{{ o.pk }}</td><td>{{ o.paid_at|date:"j M, H:i" }}</td><td>{{ o.customer_name }}</td><td>{{ o.get_status_display }}</td><td class="text-end">{{ o.total_paise|rupees }}</td></tr>
+      {% empty %}<tr><td colspan="5" class="text-center text-muted">No finished online orders yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

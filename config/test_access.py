@@ -10,11 +10,11 @@ from accounts.models import User
 
 # Pages that are public on purpose. Everything else must refuse a signed-out visitor.
 PUBLIC_GET = {
-    "/", "/plans/", "/cafe/", "/courts/availability/", "/enquiry/", "/thanks/", "/shop/", "/shop/cart/", "/login/",
+    "/", "/plans/", "/cafe/", "/cafe/cart/", "/courts/availability/", "/enquiry/", "/thanks/", "/shop/", "/shop/cart/", "/login/",
 }
 # Public POST endpoints (forms and machine-to-machine calls that protect themselves another way).
 PUBLIC_POST = {
-    "/enquiry/", "/shop/cart/", "/shop/cart/add/", "/auth/firebase/", "/logout/",
+    "/enquiry/", "/shop/cart/", "/shop/cart/add/", "/cafe/cart/", "/cafe/cart/add/", "/auth/firebase/", "/logout/",
     "/webhooks/razorpay/",  # protected by the HMAC signature
 }
 SKIP_PREFIXES = ("admin/", "static/")  # Django admin has its own login
@@ -79,15 +79,15 @@ class SignedOutVisitorTests(TestCase):
 # What each staff role must NOT be able to open. (Permission checks run before any lookup, so the
 # dummy ids in these URLs never matter: a wrong role is refused with 403 first.)
 FORBIDDEN_FOR = {
-    "member": ["/bar/menu/", "/desk/", "/desk/book/", "/desk/members/", "/desk/leads/", "/desk/messages/", "/desk/shop/sale/",
+    "member": ["/bar/menu/", "/bar/online/", "/desk/", "/desk/book/", "/desk/members/", "/desk/leads/", "/desk/messages/", "/desk/shop/sale/",
                "/desk/shop/stock/", "/bar/", "/bar/kitchen/", "/owner/dashboard/", "/owner/invoices/",
                "/owner/payroll/", "/owner/audit/", "/staff/leave/"],
-    "front_desk": ["/bar/menu/", "/bar/", "/bar/kitchen/", "/bar/shift/", "/bar/day-report/", "/owner/dashboard/", "/owner/invoices/",
+    "front_desk": ["/bar/menu/", "/bar/online/", "/bar/", "/bar/kitchen/", "/bar/shift/", "/bar/day-report/", "/owner/dashboard/", "/owner/invoices/",
                    "/owner/gst/", "/owner/payroll/", "/owner/leave/", "/owner/audit/", "/owner/export/ledger.csv"],
     "bar_staff": ["/desk/book/", "/desk/members/", "/desk/members/new/", "/desk/leads/", "/desk/messages/",
                   "/desk/social/", "/desk/shop/sale/", "/desk/shop/orders/", "/desk/shop/stock/", "/owner/dashboard/",
                   "/owner/invoices/", "/owner/audit/"],
-    "shop_staff": ["/bar/menu/", "/desk/book/", "/desk/members/", "/desk/leads/", "/desk/messages/", "/desk/social/", "/bar/",
+    "shop_staff": ["/bar/menu/", "/bar/online/", "/desk/book/", "/desk/members/", "/desk/leads/", "/desk/messages/", "/desk/social/", "/bar/",
                    "/bar/kitchen/", "/owner/dashboard/", "/owner/invoices/", "/owner/audit/"],
 }
 

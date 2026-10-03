@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Your cafe order | Champions Club{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">local_cafe</span>Cafe</div><h1 class="page-title">Your order</h1>
+    <p class="page-sub">Pay online now, then collect at the cafe counter when it's ready.</p></div>
+  <a href="{% url 'cafe' %}" class="btn btn-outline-primary"><span class="msym">arrow_back</span>Back to the menu</a>
+</div>
+{% if lines %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="panel">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead><tr><th>Item</th><th class="text-end">Price</th><th class="text-center">Qty</th><th class="text-end">Total</th></tr></thead>
+          <tbody>
+          {% for line in lines %}
+            <tr>
+              <td><span class="d-inline-flex gap-2 align-items-center"><span class="veg-mark" aria-label="Vegetarian"></span><strong>{{ line.item.name }}</strong></span>
+                {% if not line.item.is_available %} <span class="badge bg-danger">Sold out</span>{% endif %}</td>
+              <td class="text-end">{{ line.item.price_paise|rupees }}</td>
+              <td class="text-center">
+                <form method="post" class="qty-form d-inline-flex align-items-center gap-1">{% csrf_token %}
+                  <input type="hidden" name="item" value="{{ line.item.pk }}">
+                  <button name="change" value="less" class="btn btn-sm btn-outline-secondary" aria-label="One less {{ line.item.name }}">&minus;</button>
+                  <span class="px-2 fw-bold">{{ line.quantity }}</span>
+                  <button name="change" value="add" class="btn btn-sm btn-outline-secondary" aria-label="One more {{ line.item.name }}">+</button>
+                </form>
+              </td>
+              <td class="text-end"><strong>{{ line.total|rupees }}</strong></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="panel panel-pad sticky-side">
+      <h2 class="panel-title mb-3">Order total</h2>
+      <div class="summary">
+        <div class="summary-row"><span>Subtotal</span><span>{{ subtotal|rupees }}</span></div>
+        {% if discount %}<div class="summary-row text-success"><span>Member discount ({{ discount_pct }}%)</span><span>-{{ discount|rupees }}</span></div>{% endif %}
+        <div class="summary-total"><span>Total</span><span>{{ total|rupees }}</span></div>
+      </div>
+      {% if sold_out %}
+        <div class="alert alert-warning small mt-3 mb-0" role="alert">Remove the sold-out item{{ sold_out|length|pluralize }} to continue: {{ sold_out|join:", " }}.</div>
+      {% elif user.is_authenticated %}
+        <form method="post" action="{% url 'cafe_checkout' %}" class="mt-3">{% csrf_token %}
+          <button class="btn btn-primary btn-lg w-100"><span class="msym">lock</span>Pay {{ total|rupees }} online</button>
+        </form>
+      {% else %}
+        <a href="{% url 'login' %}?next={% url 'cafe_cart' %}" class="btn btn-primary btn-lg w-100 mt-3">Sign in to pay</a>
+      {% endif %}
+      <p class="small text-muted mt-2 mb-0">Secure payment by Razorpay. Your order goes to the kitchen as soon as it's paid.</p>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="panel panel-pad text-center py-5">
+  <div class="icon-badge mx-auto mb-3"><span class="msym">local_cafe</span></div>
+  <h2 class="h4">Your order is empty</h2>
+  <p class="text-muted">Add coffee, snacks or a meal from the menu.</p>
+  <a href="{% url 'cafe' %}" class="btn btn-primary">See the menu</a>
+</div>
+{% endif %}
+{% endblock %}

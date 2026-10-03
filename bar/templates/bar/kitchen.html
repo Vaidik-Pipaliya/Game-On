@@ -12,6 +12,18 @@
   </div>
 </div>
 <div class="row g-3" aria-live="polite">
+  {% for line in online_tickets %}
+  <div class="col-sm-6 col-lg-4 col-xl-3">
+    <div class="ticket" style="border-left-color:var(--ball-500, #E3C233)">
+      <div class="small text-muted"><span class="chip chip-ball">Online #{{ line.order_id }}</span> {{ line.order.paid_at|date:"H:i" }} &middot; {{ line.order.customer_name }} &middot; collect at counter</div>
+      <div class="fs-4 my-2 headline"><strong>{{ line.quantity }} &times; {{ line.menu_item.name }}</strong></div>
+      <form method="post" action="{% url 'bar_cafe_ticket_ready' line.pk %}">{% csrf_token %}
+        <input type="hidden" name="station" value="{{ station }}">
+        <button class="btn btn-success w-100"><span class="msym">check</span>Ready</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
   {% for line in tickets %}
   <div class="col-sm-6 col-lg-4 col-xl-3">
     <div class="ticket">
@@ -24,7 +36,9 @@
     </div>
   </div>
   {% empty %}
+  {% if not online_tickets %}
   <div class="col-12"><div class="panel panel-pad text-center py-5"><div class="icon-badge mx-auto mb-3"><span class="msym">done_all</span></div><h2 class="h4">No orders waiting</h2></div></div>
+  {% endif %}
   {% endfor %}
 </div>
 {% endblock %}

@@ -13,6 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from accounts.permissions import STAFF_ROLES, role_required
+from bar.models import CafeOrder
 from config.clock import local_day_bounds
 from courts.models import Booking
 from shop.models import Order
@@ -33,7 +34,7 @@ def _is_staff(user):
 
 
 def _payment_for(request, pk):
-    """Staff can open any payment; a customer only the payment for their own online shop order."""
+    """Staff can open any payment; a customer only the payment for their own order or booking."""
     payment = get_object_or_404(Payment, pk=pk)
     if _is_staff(request.user):
         return payment
@@ -41,6 +42,8 @@ def _payment_for(request, pk):
         return payment
     if payment.source == Source.COURT and Booking.objects.filter(pk=payment.reference_id, member__user=request.user).exists():
         return payment  # a member paying for their own court booking
+    if payment.source == Source.BAR and CafeOrder.objects.filter(pk=payment.reference_id, placed_by=request.user).exists():
+        return payment  # their own online cafe order
     raise PermissionDenied
 
 
@@ -53,6 +56,8 @@ def _after_payment_url(request, payment):
             return f"/desk/book/?date={timezone.localtime(booking.start).date().isoformat()}"
     if payment.source == Source.SHOP:
         return "/desk/shop/orders/" if _is_staff(request.user) else "/shop/my-orders/"
+    if payment.source == Source.BAR:
+        return "/cafe/orders/"
     return "/desk/"
 
 

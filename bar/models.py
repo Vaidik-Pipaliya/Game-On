@@ -86,3 +86,40 @@ class Shift(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["staff"], condition=Q(ended_at__isnull=True), name="one_open_shift_per_staff"),
         ]
+
+
+class CafeOrder(models.Model):
+    """An order placed and paid online, then collected at the counter.
+
+    Tabs are pay-later (at a table or the counter); a CafeOrder is pay-first. It reaches the kitchen
+    only once Razorpay has confirmed the payment.
+    """
+
+    class Status(models.TextChoices):
+        AWAITING_PAYMENT = "awaiting", "Waiting for payment"
+        PREPARING = "preparing", "Being prepared"
+        READY = "ready", "Ready to collect"
+        COLLECTED = "collected", "Collected"
+        CANCELLED = "cancelled", "Cancelled"
+
+    placed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    member = models.ForeignKey(Member, null=True, blank=True, on_delete=models.PROTECT)
+    customer_name = models.CharField(max_length=120)
+    # Frozen when the order is placed: the menu or the member's plan changing later doesn't alter what was paid.
+    subtotal_paise = models.PositiveIntegerField()
+    discount_paise = models.PositiveIntegerField(default=0)
+    total_paise = models.PositiveIntegerField()
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.AWAITING_PAYMENT)
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Cafe order #{self.pk}"
+
+
+class CafeOrderLine(models.Model):
+    order = models.ForeignKey(CafeOrder, on_delete=models.CASCADE, related_name="lines")
+    menu_item = models.ForeignKey(MenuItem, on_delete=models.PROTECT)
+    quantity = models.PositiveIntegerField()
+    unit_price_paise = models.PositiveIntegerField(help_text="Menu price frozen at order time")
+    is_ready = models.BooleanField(default=False)

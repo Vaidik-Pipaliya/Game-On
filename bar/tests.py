@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
@@ -8,11 +9,12 @@ from django.utils import timezone
 
 from accounts.models import AuditLog, User
 from courts.tests import Fixtures
-from finance.models import Ledger
+from finance.models import Ledger, Payment
+from finance.services import mark_payment_captured
 
-from .models import MenuItem, Shift, Tab, TabLine, Table
+from .models import CafeOrder, MenuItem, Shift, Tab, TabLine, Table
 from .services import (
-    add_item, attach_member, bill_for, day_report, end_shift, kitchen_tickets, mark_line_ready, open_tab,
+    add_item, attach_member, bill_for, cafe_tickets, day_report, end_shift, kitchen_tickets, mark_line_ready, open_tab,
     settle_tab, start_shift, void_empty_tab,
 )
 from .views import _rupees_to_paise
@@ -255,3 +257,119 @@ class MenuTests(BarFixtures, TestCase):
         self.client.force_login(User.objects.create(username="d", email="d@example.com", role="front_desk"))
         self.assertEqual(self.client.get(reverse("bar_menu")).status_code, 403)
         self.assertEqual(self.client.post(reverse("bar_menu_toggle", args=[self.beer.pk])).status_code, 403)
+
+
+
+def fake_razorpay(order_id="order_cafe_1"):
+    """Stands in for Razorpay's 'create order' call; everything after it is our real code."""
+    client = patch("finance.services._razorpay_client").start()
+    client.return_value.order.create.return_value = {"id": order_id}
+    return client
+
+
+class CafeOnlineOrderTests(BarFixtures, TestCase):
+    def setUp(self):
+        self.make_bar()
+        self.member = self.make_member(self.gold, name="Asha")
+        self.user = User.objects.create(username="asha", email="asha@example.com", role="member")
+        self.member.user = self.user
+        self.member.save()
+        self.addCleanup(patch.stopall)
+
+    def order_and_pay_start(self):
+        self.client.force_login(self.user)
+        self.client.post(reverse("cafe_cart_add"), {"item": self.beer.pk})
+        self.client.post(reverse("cafe_cart_add"), {"item": self.burger.pk})
+        self.client.post(reverse("cafe_cart_add"), {"item": self.burger.pk})
+        fake_razorpay()
+        with self.settings(RAZORPAY_KEY_ID="rzp_test", RAZORPAY_KEY_SECRET="secret"):
+            response = self.client.post(reverse("cafe_checkout"))
+        payment = Payment.objects.get()
+        self.assertRedirects(response, reverse("pay_page", args=[payment.pk]), fetch_redirect_response=False)
+        return CafeOrder.objects.get(), payment
+
+    def test_order_freezes_prices_and_member_discount(self):
+        order, payment = self.order_and_pay_start()
+        self.assertEqual(order.subtotal_paise, 25000 + 2 * 50000)
+        self.assertEqual(order.discount_paise, 12500)  # Gold: 10% off the bar
+        self.assertEqual((order.total_paise, payment.amount_paise), (112500, 112500))
+        self.assertEqual(order.status, "awaiting")
+        self.assertEqual(self.client.session["cafe_cart"], {})
+
+    def test_unpaid_order_never_reaches_the_kitchen(self):
+        self.order_and_pay_start()
+        self.assertEqual(list(cafe_tickets("kitchen")), [])
+
+    def test_paid_order_goes_to_kitchen_then_ready_then_collected(self):
+        order, payment = self.order_and_pay_start()
+        mark_payment_captured(razorpay_order_id=payment.razorpay_order_id, razorpay_payment_id="pay_1")
+        order.refresh_from_db()
+        self.assertEqual(order.status, "preparing")
+        ledger = Ledger.objects.get(payment=payment)
+        self.assertEqual((ledger.source, ledger.method, ledger.amount_paise), ("bar", "online", 112500))
+
+        staff = User.objects.create(username="b", email="b@example.com", role="bar_staff")
+        self.client.force_login(staff)
+        kitchen = self.client.get(reverse("bar_kitchen"), {"station": "kitchen"})
+        self.assertContains(kitchen, f"Online #{order.pk}")
+        for line in order.lines.all():
+            self.client.post(reverse("bar_cafe_ticket_ready", args=[line.pk]))
+        order.refresh_from_db()
+        self.assertEqual(order.status, "ready")
+        self.client.post(reverse("bar_online_order_action", args=[order.pk, "collect"]))
+        order.refresh_from_db()
+        self.assertEqual(order.status, "collected")
+
+    def test_paying_twice_is_counted_once(self):
+        order, payment = self.order_and_pay_start()
+        for _ in range(3):  # checkout callback + webhook retries
+            mark_payment_captured(razorpay_order_id=payment.razorpay_order_id, razorpay_payment_id="pay_1")
+        self.assertEqual(Ledger.objects.filter(payment=payment).count(), 1)
+
+    def test_cancel_refunds_in_the_ledger_and_queues_razorpay_refund(self):
+        order, payment = self.order_and_pay_start()
+        mark_payment_captured(razorpay_order_id=payment.razorpay_order_id, razorpay_payment_id="pay_1")
+        staff = User.objects.create(username="b", email="b@example.com", role="bar_staff")
+        self.client.force_login(staff)
+        self.client.post(reverse("bar_online_order_action", args=[order.pk, "cancel"]))
+        order.refresh_from_db()
+        payment.refresh_from_db()
+        self.assertEqual(order.status, "cancelled")
+        refund = Ledger.objects.get(kind="refund")
+        self.assertEqual((refund.amount_paise, refund.source), (-112500, "bar"))
+        self.assertNotEqual(payment.refund_error, "")  # "refund pending" until Razorpay confirms
+        self.assertTrue(AuditLog.objects.filter(action="cafe_order.cancel").exists())
+
+    def test_sold_out_item_cannot_be_ordered(self):
+        self.client.force_login(self.user)
+        self.client.post(reverse("cafe_cart_add"), {"item": self.burger.pk})
+        self.burger.is_available = False
+        self.burger.save()
+        response = self.client.post(reverse("cafe_checkout"), follow=True)
+        self.assertContains(response, "Sold out right now: Burger")
+        self.assertFalse(CafeOrder.objects.exists())
+
+    def test_gateway_down_drops_the_order_and_keeps_the_cart(self):
+        self.client.force_login(self.user)
+        self.client.post(reverse("cafe_cart_add"), {"item": self.beer.pk})
+        response = self.client.post(reverse("cafe_checkout"), follow=True)  # no Razorpay keys in tests
+        self.assertContains(response, "order at the counter")
+        self.assertEqual(CafeOrder.objects.get().status, "cancelled")
+        self.assertEqual(self.client.session["cafe_cart"], {str(self.beer.pk): 1})
+
+    def test_checkout_needs_login_and_another_customer_cannot_pay_your_order(self):
+        self.client.post(reverse("cafe_cart_add"), {"item": self.beer.pk})
+        self.assertEqual(self.client.post(reverse("cafe_checkout")).status_code, 302)  # to login
+        order, payment = self.order_and_pay_start()
+        other = User.objects.create(username="x", email="x@example.com", role="member")
+        self.client.force_login(other)
+        self.assertEqual(self.client.get(reverse("pay_page", args=[payment.pk])).status_code, 403)
+
+    def test_cart_quantity_buttons(self):
+        self.client.post(reverse("cafe_cart_add"), {"item": self.beer.pk})
+        key = str(self.beer.pk)
+        self.client.post(reverse("cafe_cart"), {"item": key, "change": "add"})
+        self.assertEqual(self.client.session["cafe_cart"][key], 2)
+        self.client.post(reverse("cafe_cart"), {"item": key, "change": "less"})
+        self.client.post(reverse("cafe_cart"), {"item": key, "change": "less"})
+        self.assertNotIn(key, self.client.session["cafe_cart"])

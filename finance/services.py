@@ -122,6 +122,10 @@ def mark_payment_captured(*, razorpay_order_id, razorpay_payment_id, amount_pais
             apply_online_payment(payment.reference_id, payment)
         elif payment.source == Source.SHOP:
             Order.objects.filter(pk=payment.reference_id).update(is_paid=True, payment_method=Method.ONLINE)
+        elif payment.source == Source.BAR:
+            from bar.services import apply_cafe_payment  # bar.services imports this module
+
+            apply_cafe_payment(payment.reference_id)
         return True
 
 
