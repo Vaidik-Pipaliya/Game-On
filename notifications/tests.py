@@ -6,8 +6,10 @@ from django.core import mail
 from django.db import transaction
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import User
+from courts.models import Booking
 from courts.services import book_court, cancel_booking
 from courts.tests import NOW, Fixtures, at
 from members.models import Membership
@@ -155,3 +157,34 @@ class OtherMessageTests(NotifyFixtures, TestCase):
             place_order(items=[(variant, 1)], channel="counter", payment_method="cash")
         self.assertEqual(sorted(m.to[0] for m in mail.outbox), ["owner@example.com", "shop@example.com"])
         self.assertIn("Grip", mail.outbox[0].body)
+
+
+@override_settings(CRON_SECRET="cron-secret")
+class CronEndpointTests(NotifyFixtures, TestCase):
+    def setUp(self):
+        self.make_people()
+
+    def call(self, job, secret="cron-secret", **params):
+        return self.client.get(reverse("cron", args=[job]), params, HTTP_AUTHORIZATION=f"Bearer {secret}")
+
+    def test_wrong_or_missing_secret_is_refused(self):
+        self.assertEqual(self.call("retry-notifications", secret="guess").status_code, 403)
+        self.assertEqual(self.client.get(reverse("cron", args=["retry-notifications"])).status_code, 403)
+
+    @override_settings(CRON_SECRET="")
+    def test_jobs_are_off_when_no_secret_is_configured(self):
+        self.assertEqual(self.call("retry-notifications", secret="").status_code, 403)
+
+    def test_unknown_job(self):
+        self.assertEqual(self.call("delete-everything").status_code, 404)
+
+    def test_daily_reminder_run_covers_the_whole_day(self):
+        booking = Booking.objects.create(court=self.court1, member=self.email_only,
+                                         start=timezone.now() + timedelta(hours=9), end=timezone.now() + timedelta(hours=10))
+        self.assertEqual(self.call("booking-reminders").json()["result"], 0)  # default 2-hour window
+        self.assertEqual(self.call("booking-reminders", window_hours=17).json()["result"], 1)
+        self.assertEqual(Notification.objects.get(template="booking_reminder").booking, booking)
+
+    def test_renewal_and_retry_jobs_run(self):
+        self.assertEqual(self.call("renewal-reminders").json(), {"job": "renewal-reminders", "result": 0})
+        self.assertEqual(self.call("retry-notifications").json()["result"], 0)

@@ -120,5 +120,5 @@ sequenceDiagram
 | Payments | Razorpay (test mode) | India-first: UPI, cards; signed webhooks | Stripe: weaker UPI support |
 | Messages | WhatsApp Cloud API + Gmail SMTP | Members live on WhatsApp; email as fallback | SMS gateway: cost, no templates |
 | Analytics | pandas + Chart.js | Simple, well known | BI tool: overkill |
-| Background work | `transaction.on_commit` + management commands (cron) | No extra servers | Celery + Redis: not needed at this size |
-| Hosting | Render (or Railway) + Neon Postgres | Free tiers, managed DB | Self-managed VM |
+| Background work | `transaction.on_commit` + Vercel Cron calling `/cron/<job>/` (management commands locally) | No extra servers | Celery + Redis: not needed at this size |
+| Hosting | Vercel (zero-config Django, serverless) + Neon Postgres | Free tier, deploys from GitHub, CDN for static files, cron built in; Neon is serverless Postgres with btree_gist | Self-managed VM; Render (needs gunicorn + whitenoise) |

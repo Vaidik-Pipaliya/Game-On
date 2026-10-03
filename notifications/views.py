@@ -1,11 +1,18 @@
+import hmac
+from datetime import timedelta
+
+from django.conf import settings
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from accounts.permissions import role_required
+from members.services import send_renewal_reminders
 
 from .models import Notification
-from .services import MAX_ATTEMPTS, deliver, retry_failed, whatsapp_configured
+from .services import MAX_ATTEMPTS, deliver, retry_failed, send_booking_reminders, whatsapp_configured
 
 desk_only = role_required("owner", "front_desk")
 
@@ -35,3 +42,32 @@ def retry(request, pk=None):
         else:
             messages.error(request, f"Still failing: {notification.error}")
     return redirect("notification_log")
+
+
+# ---- Scheduled jobs, called by Vercel Cron ----
+
+def _run_booking_reminders(request):
+    try:
+        hours = min(max(int(request.GET.get("window_hours", 2)), 1), 24)
+    except ValueError:
+        hours = 2
+    return send_booking_reminders(window=timedelta(hours=hours))
+
+
+CRON_JOBS = {
+    "booking-reminders": _run_booking_reminders,
+    "retry-notifications": lambda request: retry_failed(),
+    "renewal-reminders": lambda request: send_renewal_reminders(),
+}
+
+
+@csrf_exempt  # called by Vercel's scheduler, not a browser; the secret below is the protection
+def cron(request, job):
+    """Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`. No secret configured = jobs disabled."""
+    expected = f"Bearer {settings.CRON_SECRET}"
+    given = request.headers.get("Authorization", "")
+    if not settings.CRON_SECRET or not hmac.compare_digest(given, expected):
+        return JsonResponse({"error": "Not allowed"}, status=403)
+    if job not in CRON_JOBS:
+        return JsonResponse({"error": "Unknown job"}, status=404)
+    return JsonResponse({"job": job, "result": CRON_JOBS[job](request)})

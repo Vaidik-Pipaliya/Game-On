@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/cron/renewal-reminders/", "schedule": "30 0 * * *" },
+    { "path": "/cron/booking-reminders/?window_hours=17", "schedule": "30 0 * * *" },
+    { "path": "/cron/retry-notifications/", "schedule": "30 6 * * *" }
+  ]
+}

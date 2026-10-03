@@ -1,8 +1,11 @@
 from django.contrib import admin
 from django.urls import include, path
 
+from notifications.views import cron
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("cron/<str:job>/", cron, name="cron"),
     path("desk/members/", include("members.urls")),
     path("desk/messages/", include("notifications.urls")),
     path("desk/", include("courts.urls")),

@@ -1,5 +1,7 @@
 """Google/Firebase login logic. Kept out of views so it can be unit-tested with a fake token."""
 
+import json
+
 import firebase_admin
 from django.conf import settings
 from firebase_admin import auth, credentials
@@ -17,7 +19,11 @@ class InvalidToken(Exception):
 def _init_firebase():
     # firebase_admin may only be initialised once per process.
     if not firebase_admin._apps:
-        firebase_admin.initialize_app(credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH))
+        if settings.FIREBASE_CREDENTIALS_JSON:  # deployed: key JSON in an environment variable
+            key = credentials.Certificate(json.loads(settings.FIREBASE_CREDENTIALS_JSON))
+        else:  # local: key file on disk
+            key = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
+        firebase_admin.initialize_app(key)
 
 
 def verify_google_token(id_token):

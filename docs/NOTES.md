@@ -21,7 +21,7 @@
 - Rules live in `members/services.py` (not views): `register_member` creates Member + Membership in one `transaction.atomic()`; a Junior needs age < 18 and an adult guardian, and a minor can only take the Junior plan.
 - Membership status (active/expiring/expired/cancelled) is computed by `Membership.status_on(day)`, never stored. Expiring = 14 days or fewer left.
 - Renewal extends from the old end date if still valid (no paid days lost), otherwise starts today.
-- `send_renewal_reminders` emails at 14/7/1 days; `reminder_sent_on` and a "newer membership exists" check prevent duplicates and reminders to people who already renewed. Run `manage.py send_renewal_reminders` daily (cron on Render).
+- `send_renewal_reminders` emails at 14/7/1 days; `reminder_sent_on` and a "newer membership exists" check prevent duplicates and reminders to people who already renewed. Run `manage.py send_renewal_reminders` daily (Vercel Cron on deploy).
 - Search is `icontains` on name/phone, limited to 20 rows: fine for thousands of members; at 100k add an index/trigram search.
 - Form validates formats (10-digit phone, +91 stripped, DOB not in future); the service validates business rules. The money filter `rupees` turns paise into rupees for display.
 
@@ -118,5 +118,13 @@
 ## M14 - Demo data, docs, deploy prep
 - `python manage.py seed_demo` now also creates 30 days of activity (`members/demo_activity.py`): ~850 court bookings weighted to morning/evening peaks, a few cancellations with refunds, shop counter sales, bar tabs with member discounts, new-member fees, last month's payroll (expense), two GST invoices (one paid), upcoming bookings (some unpaid -> "amounts owed"), next Friday's social session, an open tab with kitchen tickets, a pending online order, a pending leave request and an overdue lead. Seeded with `random.Random(42)` so every demo looks the same; guarded by a marker so it runs once. A test checks ledger totals equal what bookings/orders say was paid.
 - Money now displays with Indian digit grouping (₹1,25,000) everywhere via the `rupees` filter.
-- Production settings (no new dependencies): HTTPS-only cookies, HSTS, proxy SSL header, `DJANGO_CSRF_TRUSTED_ORIGINS`, `DB_SSLMODE` for Neon, connection reuse, `STATIC_ROOT`. `check --deploy` only warns about HSTS subdomains/preload (deliberately off on a shared domain). gunicorn + whitenoise are still waiting for approval (see docs/DEPLOY.md).
+- Production settings (no new dependencies): HTTPS-only cookies, HSTS, proxy SSL header, `DJANGO_CSRF_TRUSTED_ORIGINS`, `DB_SSLMODE` for Neon, connection reuse, `STATIC_ROOT`. `check --deploy` only warns about HSTS subdomains/preload (deliberately off on a shared domain).
 - Docs: README (problem, features, depth, architecture, setup, limitations), docs/DEMO.md (4-minute script + judge Q&A), docs/DEPLOY.md, docs/ARCHITECTURE.md.
+
+## Deploy target: Vercel (instead of Render)
+- Vercel runs Django zero-config: detects `manage.py`, uses `WSGI_APPLICATION`, runs `collectstatic` (we set `STATIC_ROOT`) and serves static files from its CDN. So no gunicorn/whitenoise and no new dependencies.
+- `config/env.py: database_from_url()` reads Neon's single `DATABASE_URL` (SSL required by default); `DB_*` still used locally.
+- `FIREBASE_CREDENTIALS_JSON` env var holds the service-account JSON (Vercel has no secret files); the local file path still works.
+- `VERCEL_URL` / `VERCEL_PROJECT_PRODUCTION_URL` are added to `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` automatically.
+- **Cron:** `vercel.json` calls `GET /cron/<job>/` (renewal reminders, booking reminders, retries). The view runs only if `Authorization: Bearer <CRON_SECRET>` matches (constant-time compare); no secret configured = jobs disabled. Free (Hobby) plan = once a day, so booking reminders use `window_hours=17` at 06:00 IST to cover the whole day.
+- Serverless caveats: the rate-limit cache is per instance; messages are sent inside the request after commit. All correctness guarantees are in PostgreSQL, so they hold across instances.

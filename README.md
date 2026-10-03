@@ -45,7 +45,7 @@ Each of these is a rule that **cannot be broken by a race, a double-click or a r
 8. **Messages never break bookings.** WhatsApp/email go out via `transaction.on_commit`; every attempt is logged, and failures fall back to email and can be retried.
 9. **Database-level rules elsewhere too:** one open tab per table, one open shift per person, unique payroll per employee per month, unique invoice numbers with retry.
 
-**249 automated tests** (Django `TestCase`, real PostgreSQL, real threads for the concurrency tests).
+**257 automated tests** (Django `TestCase`, real PostgreSQL, real threads for the concurrency tests).
 
 ## Architecture
 
@@ -114,6 +114,7 @@ Open **http://localhost:8000** (use `localhost`, not `127.0.0.1`, for Google sig
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp (empty = email only) |
 | `EMAIL_BACKEND`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | Gmail SMTP (app password); console by default |
 | `CLUB_PHONE`, `CLUB_EMAIL`, `CLUB_ADDRESS` | Public website contact details |
+| `DATABASE_URL`, `FIREBASE_CREDENTIALS_JSON`, `CRON_SECRET` | Deployed on Vercel (instead of `DB_*` and the key file) |
 
 ### Tests
 
@@ -121,13 +122,14 @@ Open **http://localhost:8000** (use `localhost`, not `127.0.0.1`, for Google sig
 .venv\Scripts\python manage.py test
 ```
 
-### Scheduled jobs (cron in production)
+### Scheduled jobs
 
-| Command | When |
-|---|---|
-| `manage.py send_booking_reminders` | every 15 minutes |
-| `manage.py retry_notifications` | every 30 minutes |
-| `manage.py send_renewal_reminders` | daily, 06:00 |
+Locally they are management commands: `send_booking_reminders`, `retry_notifications`, `send_renewal_reminders`.
+On Vercel the same jobs run from `vercel.json` cron entries calling `/cron/<job>/`, protected by `CRON_SECRET` (daily on the free plan; see the deploy guide).
+
+### Deploy
+
+Vercel (zero-config Django) + Neon Postgres, no extra packages: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Screens
 
@@ -144,7 +146,8 @@ Demo script with the strongest moments first: [docs/DEMO.md](docs/DEMO.md). Depl
 - **Member self-service booking** isn't built; members book through the front desk (the public site shows availability and takes trial bookings).
 - **GST summary** covers invoices only; counter, bar and court prices are treated as GST-inclusive and not split out.
 - **Payroll** is a flat 12% deduction; no PF/ESI/TDS filing (out of scope in the PRD).
-- **Rate limiting** uses Django's per-process cache; several server processes would need a shared cache.
+- **Rate limiting** uses Django's in-memory cache, which on Vercel is per function instance; a shared cache (e.g. Upstash Redis) would make it exact.
+- **On Vercel's free plan, cron runs once a day**, so booking reminders go out in a 06:00 batch rather than 2 hours before play (Pro plan: every 15 minutes).
 - **Kitchen screen** refreshes every 10 s instead of pushing updates (no websockets).
 - **Bar shift takings** assume one till (the ledger has no staff column).
 - No audit log table for overrides (the ledger, decided_by on leave and created_by on bookings cover the main money and decisions).

@@ -119,11 +119,15 @@ def notify_booking_after_commit(booking, template):
     transaction.on_commit(lambda: notify_booking(booking, template))
 
 
-def send_booking_reminders(now=None):
-    """Remind members about sessions starting in the next 2 hours. Safe to run every few minutes."""
+def send_booking_reminders(now=None, window=REMINDER_WINDOW):
+    """Remind members about sessions starting within `window` (2 hours by default). Each booking once only.
+
+    Run every 15 minutes where cron allows it; on Vercel's free plan (one run a day) the morning
+    run uses a window covering the whole day instead.
+    """
     now = now or timezone.now()
     due = Booking.objects.filter(
-        status=Booking.Status.CONFIRMED, member__isnull=False, start__gt=now, start__lte=now + REMINDER_WINDOW,
+        status=Booking.Status.CONFIRMED, member__isnull=False, start__gt=now, start__lte=now + window,
     ).exclude(notification__template="booking_reminder").select_related("court", "member")
     return sum(1 for booking in due if notify_booking(booking, "booking_reminder"))
 
