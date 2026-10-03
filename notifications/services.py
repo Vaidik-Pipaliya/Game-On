@@ -61,7 +61,22 @@ def _send_whatsapp(notification):
         },
         timeout=10,
     )
-    response.raise_for_status()
+    if not response.ok:
+        raise WhatsAppError(_meta_reason(response))
+
+
+class WhatsAppError(Exception):
+    pass
+
+
+def _meta_reason(response):
+    """Meta's own explanation (e.g. 'Recipient phone number not in allowed list (code 131030)'), not just '400'."""
+    try:
+        error = response.json().get("error", {})
+    except ValueError:
+        return f"HTTP {response.status_code}"
+    details = error.get("error_data", {}).get("details", "")
+    return f"HTTP {response.status_code}: {error.get('message', '')} {details} (code {error.get('code')})".strip()
 
 
 def deliver(notification):

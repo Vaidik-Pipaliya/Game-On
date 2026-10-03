@@ -74,6 +74,21 @@ class BookingMessageTests(NotifyFixtures, TestCase):
         self.assertEqual(Notification.objects.get(channel="email").status, "sent")
         self.assertEqual(len(mail.outbox), 1)
 
+    @WHATSAPP_ON
+    @patch("notifications.services.requests.post")
+    def test_meta_rejection_reason_is_saved(self, post):
+        post.return_value.ok = False
+        post.return_value.status_code = 400
+        post.return_value.json.return_value = {"error": {
+            "message": "(#131030) Recipient phone number not in allowed list", "code": 131030,
+            "error_data": {"details": "Add the number to the allowed list"},
+        }}
+        self.book_and_commit(self.opted_in)
+        error = Notification.objects.get(channel="whatsapp").error
+        self.assertIn("Recipient phone number not in allowed list", error)
+        self.assertIn("131030", error)
+        self.assertEqual(Notification.objects.get(channel="email").status, "sent")
+
     def test_nothing_is_sent_if_the_booking_rolls_back(self):
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
             try:

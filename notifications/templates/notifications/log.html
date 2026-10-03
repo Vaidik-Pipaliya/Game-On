@@ -26,7 +26,7 @@
           <td><span class="chip chip-neutral">{{ n.channel }}</span></td>
           <td>{{ n.member.full_name|default:n.to }}</td>
           <td><span class="badge {% if n.status == 'sent' %}bg-success{% elif n.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}">{{ n.get_status_display }}</span> <span class="text-muted small">x{{ n.attempts }}</span></td>
-          <td class="text-danger small">{{ n.error|truncatechars:80 }}</td>
+          <td class="text-danger small" title="{{ n.error }}" style="max-width:28rem">{{ n.error|truncatechars:160 }}</td>
           <td>{% if n.status == "failed" %}<form method="post" action="{% url 'notification_retry' n.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">Retry</button></form>{% endif %}</td>
         </tr>
       {% empty %}
