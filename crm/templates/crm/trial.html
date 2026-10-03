@@ -1,9 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Book a trial session | Champions Club{% endblock %}
 {% block content %}
-<div class="col-lg-6">
-  <h1 class="h3">Book a trial session</h1>
-  <p class="text-muted">One hour on the court at the standard rate, paid at the club. Signed in as {{ user.email }}; we'll use this email for your confirmation. One trial per person. <a href="{% url 'availability' %}">See which courts are free.</a></p>
-  {% include "crm/_public_form.html" with submit_label="Book trial" %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="page-head"><div><h1 class="page-title">Book a trial session</h1>
+      <p class="page-sub">One hour on the court at the standard rate, paid at the club. Signed in as {{ user.email }}; we'll use this email for your confirmation. One trial per person. <a href="{% url 'availability' %}">See which courts are free.</a></p></div></div>
+    {% include "crm/_public_form.html" with submit_label="Book trial" %}
+  </div>
+  <div class="col-lg-5">
+    <div class="info-block">
+      <strong class="d-block mb-2">How a trial works</strong>
+      <div class="row-item"><span class="msym">looks_one</span><div>Pick a court and a time that suits you.</div></div>
+      <div class="row-item"><span class="msym">payments</span><div>Pay at the club on the day, at the standard court rate.</div></div>
+      <div class="row-item"><span class="msym">support_agent</span><div>Afterwards our team can tell you about membership.</div></div>
+    </div>
+  </div>
 </div>
 {% endblock %}

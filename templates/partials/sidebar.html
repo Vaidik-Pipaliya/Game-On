@@ -1,0 +1,65 @@
+{% with n=request.resolver_match.url_name %}
+<aside class="sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar" aria-label="Staff navigation">
+  <div class="offcanvas-header d-lg-none">
+    <span class="brand-name">Menu</span>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body d-flex flex-column p-0 h-100">
+    <a class="brand" href="{% url 'desk' %}">
+      <span class="brand-mark"><span class="msym msym-fill">sports_tennis</span></span>
+      <span><span class="brand-name">Champions Club</span><span class="brand-sub">Staff desk</span></span>
+    </a>
+
+    <a class="side-link {% if n == 'desk' %}active{% endif %}" href="{% url 'desk' %}"><span class="msym">space_dashboard</span>Staff desk</a>
+
+    {% if can_courts %}
+    <div class="side-label">Courts &amp; members</div>
+    <a class="side-link {% if n == 'booking_grid' or n == 'booking_new' %}active{% endif %}" href="{% url 'booking_grid' %}"><span class="msym">grid_view</span>Court grid</a>
+    <a class="side-link {% if n == 'social_list' %}active{% endif %}" href="{% url 'social_list' %}"><span class="msym">groups</span>Friday social play</a>
+    <a class="side-link {% if n == 'member_search' or n == 'member_detail' %}active{% endif %}" href="{% url 'member_search' %}"><span class="msym">badge</span>Members</a>
+    <a class="side-link {% if n == 'member_new' %}active{% endif %}" href="{% url 'member_new' %}"><span class="msym">person_add</span>Register member</a>
+    <a class="side-link {% if n == 'lead_list' or n == 'lead_detail' %}active{% endif %}" href="{% url 'lead_list' %}"><span class="msym">contact_page</span>Leads</a>
+    <a class="side-link {% if n == 'notification_log' %}active{% endif %}" href="{% url 'notification_log' %}"><span class="msym">forum</span>Messages</a>
+    {% endif %}
+
+    {% if can_shop %}
+    <div class="side-label">Gear shop</div>
+    <a class="side-link {% if n == 'shop_counter' %}active{% endif %}" href="{% url 'shop_counter' %}"><span class="msym">point_of_sale</span>Counter sale</a>
+    <a class="side-link {% if n == 'shop_orders' %}active{% endif %}" href="{% url 'shop_orders' %}"><span class="msym">local_shipping</span>Online orders</a>
+    <a class="side-link {% if n == 'shop_stock' %}active{% endif %}" href="{% url 'shop_stock' %}"><span class="msym">inventory</span>Stock</a>
+    {% endif %}
+
+    {% if can_bar %}
+    <div class="side-label">Bar &amp; kitchen</div>
+    <a class="side-link {% if n == 'bar_tables' or n == 'bar_tab' %}active{% endif %}" href="{% url 'bar_tables' %}"><span class="msym">table_restaurant</span>Tables &amp; tabs</a>
+    <a class="side-link {% if n == 'bar_kitchen' %}active{% endif %}" href="{% url 'bar_kitchen' %}"><span class="msym">skillet</span>Kitchen screen</a>
+    <a class="side-link {% if n == 'bar_shift' %}active{% endif %}" href="{% url 'bar_shift' %}"><span class="msym">payments</span>My shift</a>
+    <a class="side-link {% if n == 'bar_day_report' %}active{% endif %}" href="{% url 'bar_day_report' %}"><span class="msym">summarize</span>Day report</a>
+    {% endif %}
+
+    {% if can_owner %}
+    <div class="side-label">Owner</div>
+    <a class="side-link {% if n == 'owner_dashboard' %}active{% endif %}" href="{% url 'owner_dashboard' %}"><span class="msym">monitoring</span>Dashboard</a>
+    <a class="side-link {% if n == 'invoice_list' or n == 'invoice_detail' %}active{% endif %}" href="{% url 'invoice_list' %}"><span class="msym">receipt_long</span>Invoices</a>
+    <a class="side-link {% if n == 'gst_report' %}active{% endif %}" href="{% url 'gst_report' %}"><span class="msym">account_balance</span>GST summary</a>
+    <a class="side-link {% if n == 'payroll' %}active{% endif %}" href="{% url 'payroll' %}"><span class="msym">payments</span>Payroll</a>
+    <a class="side-link {% if n == 'leave_approvals' %}active{% endif %}" href="{% url 'leave_approvals' %}"><span class="msym">event_available</span>Leave approvals</a>
+    <a class="side-link {% if n == 'audit_log' %}active{% endif %}" href="{% url 'audit_log' %}"><span class="msym">fact_check</span>Audit log</a>
+    {% endif %}
+
+    <div class="side-label">Me</div>
+    <a class="side-link {% if n == 'my_leave' %}active{% endif %}" href="{% url 'my_leave' %}"><span class="msym">beach_access</span>My leave</a>
+
+    <div class="side-foot">
+      <a class="btn btn-outline-secondary w-100 mb-2 justify-content-between" href="{% url 'portal_grid' %}">Member view <span class="msym">arrow_forward</span></a>
+      <div class="d-flex align-items-center gap-2">
+        <span class="avatar" aria-hidden="true">{{ user.first_name|default:user.email|slice:":1"|upper }}</span>
+        <div class="user-chip text-start me-auto">{{ user.first_name|default:user.email }}<small>{{ user.get_role_display|default:user.role }}</small></div>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+          <button class="btn btn-outline-secondary btn-sm" title="Log out"><span class="msym">logout</span></button>
+        </form>
+      </div>
+    </div>
+  </div>
+</aside>
+{% endwith %}

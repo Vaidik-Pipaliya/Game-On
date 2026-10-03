@@ -1,15 +1,8 @@
-<form method="post" novalidate class="bg-white border rounded p-3">
+<form method="post" novalidate class="panel panel-pad">
   {% csrf_token %}
-  {% if form.non_field_errors %}<div class="alert alert-danger" role="alert" aria-live="polite">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+  {% if form.non_field_errors %}<div class="alert alert-danger" role="alert" aria-live="polite"><span class="msym">error</span> {% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
   {% for field in form %}
-    {% if field.name == "website" %}{{ field }}{% else %}
-    <div class="mb-3">
-      <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger" aria-hidden="true">*</span>{% endif %}</label>
-      {{ field }}
-      {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-      {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-    </div>
-    {% endif %}
+    {% if field.name == "website" %}{{ field }}{% else %}{% include "partials/field.html" with field=field %}{% endif %}
   {% endfor %}
-  <button class="btn btn-primary btn-lg">{{ submit_label }}</button>
+  <button class="btn btn-primary btn-lg w-100">{{ submit_label }}</button>
 </form>

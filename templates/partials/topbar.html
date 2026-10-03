@@ -1,0 +1,8 @@
+<header class="topbar">
+  <button class="btn btn-outline-secondary btn-sm d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Open menu">
+    <span class="msym">menu</span>
+  </button>
+  <h2 class="topbar-title">{% block topbar_title %}Staff operations{% endblock %}</h2>
+  <span class="chip chip-primary ms-1 d-none d-sm-inline-flex"><span class="dot dot-ok"></span>{{ club.name }}</span>
+  <a class="btn btn-outline-primary btn-sm ms-auto" href="{% url 'portal_grid' %}"><span class="msym">visibility</span><span class="d-none d-sm-inline">Member view</span></a>
+</header>

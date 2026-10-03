@@ -9,29 +9,72 @@
 </script>
 {% endblock %}
 {% block content %}
-<div class="row g-4 align-items-start mb-4">
-  <div class="col-lg-5">
-    <h1 class="display-6 fw-bold">{{ club.name }}</h1>
-    <p class="lead">Courts for {{ sports|join:", " }}. Book a session in seconds, pick up gear at our shop, and relax at the cafe after the match.</p>
-    <div class="d-flex flex-wrap gap-2 mb-3">
-      <a href="{% url 'trial' %}" class="btn btn-primary btn-lg">Book a trial session</a>
-      <a href="{% url 'plans' %}" class="btn btn-outline-primary btn-lg">See plans and prices</a>
+<section class="row g-4 align-items-start mb-5">
+  <div class="col-lg-6">
+    <span class="chip chip-primary mb-3"><span class="dot dot-live"></span>Real-time schedule</span>
+    <h1 class="page-title" style="font-size:2.4rem">Play more. Book in seconds.</h1>
+    <p class="fs-5 text-muted mt-3">Courts for {{ sports|join:", " }}. Book a session online, pick up gear at our shop, and relax at the cafe after the match.</p>
+    <div class="d-flex flex-wrap gap-2 my-4">
+      <a href="{% url 'trial' %}" class="btn btn-primary btn-lg"><span class="msym">sports_tennis</span>Book a trial session</a>
+      <a href="{% url 'plans' %}" class="btn btn-outline-primary btn-lg">See plans and prices <span class="msym">arrow_forward</span></a>
     </div>
-    <ul class="list-unstyled small">
-      <li><strong>Open:</strong> {{ club.hours }}</li>
-      <li><strong>Where:</strong> {{ club.address }}</li>
-      <li><strong>Call:</strong> <a href="tel:{{ club.phone }}">{{ club.phone }}</a> &middot; <a href="mailto:{{ club.email }}">{{ club.email }}</a></li>
-    </ul>
+    <div class="info-block mb-3">
+      <div class="row-item"><span class="msym">schedule</span><div><strong>Court schedule</strong><span class="text-muted">{{ club.hours }} (IST)</span></div></div>
+      <div class="row-item"><span class="msym">location_on</span><div><strong>Club address</strong><span class="text-muted">{{ club.address }}</span></div></div>
+      <div class="row-item"><span class="msym">call</span><div><strong>Reception</strong><a href="tel:{{ club.phone }}">{{ club.phone }}</a> &middot; <a href="mailto:{{ club.email }}">{{ club.email }}</a></div></div>
+    </div>
+    <div class="fact-strip">
+      <div class="fact"><strong>{{ today_grid.rows|length }} court{{ today_grid.rows|length|pluralize }}</strong><span>Bookable online</span></div>
+      <div class="fact"><strong>1 hour</strong><span>Sessions, every 30 min</span></div>
+      <div class="fact"><strong>14 days</strong><span>Book ahead</span></div>
+    </div>
   </div>
-  <div class="col-lg-7">
-    <h2 class="h5">Free courts today</h2>
+  <div class="col-lg-6">
     {% with d=today_grid %}{% include "crm/_week_grid.html" %}{% endwith %}
-    <a href="{% url 'availability' %}">See the whole week &rarr;</a>
+    <div class="d-flex justify-content-between align-items-center small">
+      <span class="text-muted"><span class="msym">bolt</span> Live from our booking system</span>
+      <a href="{% url 'availability' %}" class="fw-bold text-decoration-none">See the whole week <span class="msym">arrow_right_alt</span></a>
+    </div>
   </div>
-</div>
-<div class="row g-3">
-  <div class="col-md-4"><div class="bg-white border rounded p-3 h-100"><h2 class="h6">Members save on every visit</h2><p class="small mb-0">Gold, Silver and Junior plans give lower court rates, free hours and shop and cafe discounts, applied automatically.</p></div></div>
-  <div class="col-md-4"><div class="bg-white border rounded p-3 h-100"><h2 class="h6">Friday social play</h2><p class="small mb-0">Turn up on Friday evenings and play with other members. Pay per person, no partner needed.</p></div></div>
-  <div class="col-md-4"><div class="bg-white border rounded p-3 h-100"><h2 class="h6">Gear when you need it</h2><p class="small mb-0">Rackets, balls, shoes and apparel, in the shop or online with pickup or delivery.</p></div></div>
-</div>
+</section>
+
+<section>
+  <div class="section-kicker mb-1">The club advantage</div>
+  <h2 class="page-title mb-3" style="font-size:1.6rem">Made for people who play often</h2>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="feature">
+        <div class="feature-body">
+          <div class="feature-icon"><span class="msym">workspace_premium</span></div>
+          <h3 class="h4 mb-1">Member savings</h3>
+          <p class="text-muted mb-0">Gold, Silver and Junior plans give lower court prices every time you play.</p>
+          <ul><li>Court discounts, and free hours on some plans</li><li>Shop and cafe discounts applied automatically</li><li>Book up to 14 days ahead from your phone</li></ul>
+        </div>
+        <div class="feature-foot"><span>Compare the plans</span><a href="{% url 'plans' %}">Plans &amp; prices <span class="msym">arrow_right_alt</span></a></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="feature">
+        <div class="feature-body">
+          <div class="feature-icon" style="background:var(--ok-soft);color:var(--ok)"><span class="msym">groups</span></div>
+          <h3 class="h4 mb-1">Friday social play</h3>
+          <p class="text-muted mb-0">Turn up on Friday evenings and play with other members. No partner needed.</p>
+          <ul><li>Join a shared court session</li><li>Pay per player, not per court</li><li>Places are limited, so reserve early</li></ul>
+        </div>
+        <div class="feature-foot"><span>Members book online</span><a href="{% url 'portal_grid' %}">Open the grid <span class="msym">arrow_right_alt</span></a></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="feature">
+        <div class="feature-body">
+          <div class="feature-icon" style="background:var(--info-soft);color:var(--info)"><span class="msym">storefront</span></div>
+          <h3 class="h4 mb-1">Gear when you need it</h3>
+          <p class="text-muted mb-0">Rackets, balls, shoes, accessories and apparel, in the shop or online.</p>
+          <ul><li>Stock shown live, per size</li><li>Pick up at the club or get it delivered</li><li>Member prices shown when you sign in</li></ul>
+        </div>
+        <div class="feature-foot"><span>Browse the shop</span><a href="{% url 'shop_catalog' %}">Gear shop <span class="msym">arrow_right_alt</span></a></div>
+      </div>
+    </div>
+  </div>
+</section>
 {% endblock %}

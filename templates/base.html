@@ -1,50 +1,32 @@
-<!doctype html>
+{% load static %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Champions Club{% endblock %}</title>
+  <title>{% block title %}The Champions Club{% endblock %}</title>
   <meta name="description" content="{% block description %}Tennis, padel, badminton and cricket nets with online court booking, a gear shop and a cafe.{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{% static 'css/club.css' %}" rel="stylesheet">
   {% block head %}{% endblock %}
 </head>
-<body class="bg-light">
+<body class="{% if not staff_shell and user.is_authenticated %}has-bottom-nav{% endif %}">
 <a class="visually-hidden-focusable" href="#main">Skip to content</a>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-  <div class="container">
-    <a class="navbar-brand" href="{% url 'home' %}">Champions Club</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Menu">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="nav">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link" href="{% url 'plans' %}">Plans and prices</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'availability' %}">Free courts</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'trial' %}">Book a trial</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'shop_catalog' %}">Shop</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'enquiry' %}">Contact</a></li>
-      </ul>
-      <div class="d-flex flex-wrap align-items-center gap-2 text-white">
-        {% if user.is_authenticated %}
-          <a class="nav-link text-white" href="{% url 'portal_grid' %}">Book a court</a>
-          <a class="nav-link text-white" href="{% url 'portal_mine' %}">My bookings</a>
-          <a class="nav-link text-white" href="{% url 'shop_my_orders' %}">My orders</a>
-          {% if user.is_superuser or user.role != "member" %}<a class="nav-link text-white" href="{% url 'desk' %}">Staff desk</a>{% endif %}
-          <span class="small">{{ user.email }} ({{ user.role }})</span>
-          <form method="post" action="{% url 'logout' %}">{% csrf_token %}
-            <button class="btn btn-sm btn-outline-light">Log out</button>
-          </form>
-        {% else %}
-          <a class="btn btn-sm btn-light" href="{% url 'login' %}">Log in</a>
-        {% endif %}
-      </div>
-    </div>
+<div class="{% if staff_shell %}shell-staff{% endif %}">
+  {% if staff_shell %}{% include "partials/sidebar.html" %}{% endif %}
+  <div class="shell-main">
+    {% if staff_shell %}{% include "partials/topbar.html" %}{% else %}{% include "partials/site_header.html" %}{% endif %}
+    <main id="main" class="page">
+      {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>{% endfor %}
+      {% block content %}{% endblock %}
+    </main>
+    {% if not staff_shell %}{% include "partials/footer.html" %}{% endif %}
   </div>
-</nav>
-<main id="main" class="container py-4">
-  {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>{% endfor %}
-  {% block content %}{% endblock %}
-</main>
+</div>
+{% if user.is_authenticated and not staff_shell %}{% include "partials/bottom_nav.html" %}{% endif %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 {% block scripts %}{% endblock %}
 </body>

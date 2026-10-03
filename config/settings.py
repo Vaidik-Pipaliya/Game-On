@@ -61,6 +61,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "accounts.context.ui",
             ],
         },
     },
@@ -147,6 +148,7 @@ FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
 
 STATIC_URL = "static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]  # our own stylesheet: static/css/club.css
 STATIC_ROOT = BASE_DIR / "staticfiles"  # `collectstatic` copies admin CSS/JS here for production
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

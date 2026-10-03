@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Membership needed | Champions Club{% endblock %}
 {% block content %}
-<div class="col-lg-6 mx-auto text-center py-4">
-  <h1 class="h3">We can't find your membership yet</h1>
-  <p>You're signed in as {{ user.email }}, but no member record uses this email. Ask the front desk to register you with this email address, then sign in again.</p>
-  <a href="{% url 'enquiry' %}" class="btn btn-primary">Contact the club</a>
-  <a href="{% url 'trial' %}" class="btn btn-outline-primary">Book a trial instead</a>
+<div class="center-card panel panel-pad text-center">
+  <div class="icon-badge mx-auto mb-3"><span class="msym">badge</span></div>
+  <h1 class="page-title" style="text-transform:none">We can't find your membership yet</h1>
+  <p class="text-muted mt-2">You're signed in as {{ user.email }}, but no member record uses this email. Ask the front desk to register you with this email address, then sign in again.</p>
+  <div class="d-flex flex-wrap justify-content-center gap-2">
+    <a href="{% url 'enquiry' %}" class="btn btn-primary"><span class="msym">mail</span>Contact the club</a>
+    <a href="{% url 'trial' %}" class="btn btn-outline-primary">Book a trial instead</a>
+  </div>
 </div>
 {% endblock %}

@@ -1,22 +1,47 @@
 {% extends "base.html" %}
-{% block title %}Check out{% endblock %}
+{% block title %}Check out | Champions Club{% endblock %}
 {% block content %}
-<div class="col-lg-6">
-  <h1 class="h3 mb-3">Check out</h1>
-  <ul class="small text-muted">{% for variant, qty in items %}<li>{{ qty }} &times; {{ variant }}</li>{% endfor %}</ul>
-  <form method="post" novalidate class="bg-white border rounded p-3">
-    {% csrf_token %}
-    {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
-    {% for field in form %}
-      <div class="mb-3">
-        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {{ field }}
-        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-        {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-      </div>
-    {% endfor %}
-    <button class="btn btn-primary">Place order</button>
-    <a href="{% url 'shop_cart' %}" class="btn btn-link">Back to cart</a>
-  </form>
+<div class="page-head">
+  <div><h1 class="page-title">Check out</h1><p class="page-sub">Tell us who is collecting and how you'd like to pay.</p></div>
+  <a href="{% url 'shop_cart' %}" class="btn btn-outline-primary"><span class="msym">arrow_back</span>Back to cart</a>
 </div>
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="row g-4">
+    <div class="col-lg-8">
+      {% if form.non_field_errors %}<div class="alert alert-danger" role="alert"><span class="msym">error</span> {% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+
+      <div class="panel panel-pad mb-3">
+        <div class="step-head"><span class="step-no">1</span><h2 class="panel-title">Contact</h2></div>
+        <div class="row">
+          <div class="col-md-6">{% include "partials/field.html" with field=form.customer_name %}</div>
+          <div class="col-md-6">{% include "partials/field.html" with field=form.customer_phone %}</div>
+        </div>
+      </div>
+
+      <div class="panel panel-pad mb-3">
+        <div class="step-head"><span class="step-no">2</span><h2 class="panel-title">Collect or deliver</h2></div>
+        {% include "partials/field.html" with field=form.fulfilment %}
+        {% include "partials/field.html" with field=form.delivery_address %}
+      </div>
+
+      <div class="panel panel-pad">
+        <div class="step-head"><span class="step-no">3</span><h2 class="panel-title">Payment</h2></div>
+        {% include "partials/field.html" with field=form.payment_method %}
+        <button class="btn btn-primary btn-lg w-100"><span class="msym">shopping_bag</span>Place order</button>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="panel panel-pad sticky-side">
+        <h2 class="panel-title mb-3">Order summary</h2>
+        <ul class="list-unstyled mb-0">
+          {% for variant, qty in items %}
+          <li class="summary-row"><span>{{ variant }}</span><strong>&times; {{ qty }}</strong></li>
+          {% endfor %}
+        </ul>
+        <p class="small text-muted mt-3 mb-0">The final total, with your member discount, is shown once the order is placed.</p>
+      </div>
+    </div>
+  </div>
+</form>
 {% endblock %}

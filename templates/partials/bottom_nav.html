@@ -1,0 +1,8 @@
+{% with n=request.resolver_match.url_name %}
+<nav class="bottom-nav" aria-label="Member">
+  <a href="{% url 'portal_grid' %}" {% if n == 'portal_grid' or n == 'portal_confirm' or n == 'portal_waitlist_join' %}class="active" aria-current="page"{% endif %}><span class="msym">sports_tennis</span>Book</a>
+  <a href="{% url 'portal_mine' %}" {% if n == 'portal_mine' %}class="active" aria-current="page"{% endif %}><span class="msym">calendar_month</span>Bookings</a>
+  <a href="{% url 'shop_catalog' %}" {% if n == 'shop_catalog' or n == 'shop_cart' or n == 'shop_checkout' %}class="active" aria-current="page"{% endif %}><span class="msym">storefront</span>Shop</a>
+  <a href="{% url 'shop_my_orders' %}" {% if n == 'shop_my_orders' %}class="active" aria-current="page"{% endif %}><span class="msym">inventory_2</span>Orders</a>
+</nav>
+{% endwith %}

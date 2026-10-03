@@ -1,10 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Log in{% endblock %}
+{% block title %}Log in | Champions Club{% endblock %}
 {% block content %}
-<div class="col-md-5 mx-auto text-center">
-  <h1 class="h3 mb-3">Log in</h1>
-  <div id="google-btn" class="d-flex justify-content-center"></div>
-  <div id="login-error" class="alert alert-danger mt-3 d-none" role="alert"></div>
+<div class="center-card panel panel-pad text-center">
+  <div class="icon-badge mx-auto mb-3"><span class="msym">lock_open</span></div>
+  <div class="eyebrow justify-content-center mb-1">Member &amp; staff sign in</div>
+  <h1 class="page-title" style="text-transform:none">Log in</h1>
+  <p class="text-muted mt-2">Sign in with Google to book courts, see your orders and manage your membership. Staff use their club Google account.</p>
+  <div id="google-btn" class="d-flex justify-content-center my-3"></div>
+  <div id="login-error" class="alert alert-danger mt-3 d-none text-start" role="alert"></div>
+  <p class="small text-muted mb-0">New here? <a href="{% url 'trial' %}">Book a trial</a> or <a href="{% url 'enquiry' %}">contact the club</a>.</p>
 </div>
 {% csrf_token %}
 {{ firebase_config|json_script:"firebase-config" }}

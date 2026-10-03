@@ -1,14 +1,19 @@
-{# One day's free/taken view for the public: hours as columns, courts as rows. No names. #}
-<div class="table-responsive bg-white border rounded mb-3">
-  <table class="table table-sm mb-0 text-center align-middle" style="font-size:.8rem">
-    <caption class="px-2">{{ d.day|date:"l j M" }} &middot; <span class="text-success">&#10003; free</span> &middot; <span class="text-muted">&ndash; taken or past</span></caption>
-    <thead><tr><th class="text-start">Court</th>{% for h in d.hours %}<th scope="col">{{ h|date:"ga" }}</th>{% endfor %}</tr></thead>
-    <tbody>
-    {% for court, states in d.rows %}
-      <tr><th scope="row" class="text-start fw-normal">{{ court.name }}</th>
-        {% for s in states %}<td>{% if s == "free" %}<span class="text-success" aria-label="free">&#10003;</span>{% else %}<span class="text-muted" aria-label="not available">&ndash;</span>{% endif %}</td>{% endfor %}
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+{# One day's free/taken view for the public: hours as columns, courts as rows. No names, ever. #}
+<div class="panel mb-3">
+  <div class="panel-head">
+    <h2 class="panel-title">{{ d.day|date:"l j M" }}</h2>
+    <span class="legend"><span><span class="tick text-success">&#10003;</span> free</span> <span><span class="tick">&ndash;</span> taken or past</span></span>
+  </div>
+  <div class="table-responsive p-2">
+    <table class="mini-grid">
+      <thead><tr><th class="lane">Court</th>{% for h in d.hours %}<th scope="col">{{ h|date:"gA" }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for court, states in d.rows %}
+        <tr><th scope="row" class="lane"><span class="lane-key"></span>{{ court.name }}</th>
+          {% for s in states %}{% if s == "free" %}<td><span class="visually-hidden">free</span><span aria-hidden="true">&#10003;</span></td>{% else %}<td class="no"><span class="visually-hidden">not available</span><span aria-hidden="true">&ndash;</span></td>{% endif %}{% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>

@@ -2,10 +2,12 @@
 {% block title %}Free courts this week | Champions Club{% endblock %}
 {% block description %}See which tennis, padel, badminton and cricket courts are free at Champions Club over the next 7 days.{% endblock %}
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-  <h1 class="h3 mb-0">Free courts this week</h1>
-  <a href="{% url 'trial' %}" class="btn btn-primary">Book a trial</a>
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Free courts this week</h1>
+    <p class="page-sub">Sessions are one hour. Live from our booking system; members book online or at the front desk.</p>
+  </div>
+  <a href="{% url 'trial' %}" class="btn btn-primary"><span class="msym">sports_tennis</span>Book a trial</a>
 </div>
-<p class="text-muted small">Sessions are one hour. Live from our booking system; members book at the front desk or by phone.</p>
 {% for d in week %}{% include "crm/_week_grid.html" %}{% endfor %}
 {% endblock %}

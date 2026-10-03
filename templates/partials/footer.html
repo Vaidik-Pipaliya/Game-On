@@ -1,0 +1,33 @@
+<footer class="site-footer">
+  <div class="inner">
+    <div class="row g-4">
+      <div class="col-lg-5">
+        <a class="brand mb-2" href="{% url 'home' %}">
+          <span class="brand-mark"><span class="msym msym-fill">sports_tennis</span></span>
+          <span class="brand-name">The Champions Club</span>
+        </a>
+        <p class="small text-muted mb-3">Courts for tennis, padel, badminton and cricket nets. Book online, collect gear from the shop, and relax at the cafe after the match.</p>
+        <ul class="list-unstyled mb-0">
+          <li><span class="msym me-1">schedule</span> {{ club.hours }}</li>
+          <li><span class="msym me-1">location_on</span> {{ club.address }}</li>
+          <li><span class="msym me-1">call</span> <a href="tel:{{ club.phone }}">{{ club.phone }}</a> &middot; <a href="mailto:{{ club.email }}">{{ club.email }}</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-lg-3">
+        <h2>Sports</h2>
+        <ul class="list-unstyled"><li>Tennis courts</li><li>Padel courts</li><li>Badminton courts</li><li>Cricket nets</li></ul>
+      </div>
+      <div class="col-6 col-lg-4">
+        <h2>Quick links</h2>
+        <ul class="list-unstyled">
+          <li><a href="{% url 'plans' %}">Plans &amp; prices</a></li>
+          <li><a href="{% url 'availability' %}">Free courts this week</a></li>
+          <li><a href="{% url 'trial' %}">Book a trial session</a></li>
+          <li><a href="{% url 'shop_catalog' %}">Gear shop</a></li>
+          <li><a href="{% url 'enquiry' %}">Contact us</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="copyright">&copy; The Champions Club. All rights reserved.</div>
+  </div>
+</footer>

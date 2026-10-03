@@ -1,29 +1,50 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}Your cart{% endblock %}
+{% block title %}Your cart | Champions Club{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Your cart</h1>
-{% if lines %}
-<div class="table-responsive bg-white border rounded mb-3">
-  <table class="table mb-0 align-middle">
-    <thead><tr><th>Item</th><th class="text-end">Price</th><th class="text-end">Qty</th><th class="text-end">Total</th><th></th></tr></thead>
-    <tbody>
-    {% for line in lines %}
-      <tr>
-        <td>{{ line.variant }}{% if not line.variant.stock %} <span class="badge bg-danger">Out of stock</span>{% endif %}</td>
-        <td class="text-end">{{ line.unit|rupees }}</td>
-        <td class="text-end">{{ line.quantity }}</td>
-        <td class="text-end">{{ line.total|rupees }}</td>
-        <td class="text-end"><form method="post">{% csrf_token %}<button name="remove" value="{{ line.variant.pk }}" class="btn btn-sm btn-link text-danger">Remove</button></form></td>
-      </tr>
-    {% endfor %}
-    </tbody>
-    <tfoot><tr><th colspan="3" class="text-end">Total</th><th class="text-end">{{ total|rupees }}</th><th></th></tr></tfoot>
-  </table>
+<div class="page-head">
+  <div><h1 class="page-title">Your cart</h1><p class="page-sub">Check your items, then go to checkout.</p></div>
+  <a href="{% url 'shop_catalog' %}" class="btn btn-outline-primary"><span class="msym">arrow_back</span>Keep shopping</a>
 </div>
-<a href="{% url 'shop_checkout' %}" class="btn btn-primary">Check out</a>
-<a href="{% url 'shop_catalog' %}" class="btn btn-link">Keep shopping</a>
+{% if lines %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="panel">
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead><tr><th>Item</th><th class="text-end">Price</th><th class="text-end">Qty</th><th class="text-end">Total</th><th></th></tr></thead>
+          <tbody>
+          {% for line in lines %}
+            <tr>
+              <td><strong>{{ line.variant }}</strong>{% if not line.variant.stock %} <span class="badge bg-danger">Out of stock</span>{% endif %}</td>
+              <td class="text-end">{{ line.unit|rupees }}</td>
+              <td class="text-end">{{ line.quantity }}</td>
+              <td class="text-end"><strong>{{ line.total|rupees }}</strong></td>
+              <td class="text-end"><form method="post">{% csrf_token %}<button name="remove" value="{{ line.variant.pk }}" class="btn btn-sm btn-outline-danger"><span class="msym">delete</span>Remove</button></form></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="panel panel-pad sticky-side">
+      <h2 class="panel-title mb-3">Order total</h2>
+      <div class="summary">
+        <div class="summary-total"><span>Total</span><span>{{ total|rupees }}</span></div>
+      </div>
+      <a href="{% url 'shop_checkout' %}" class="btn btn-primary btn-lg w-100 mt-3">Check out <span class="msym">arrow_forward</span></a>
+      <p class="small text-muted mt-2 mb-0">Your member discount is already included. Delivery, if you choose it, is added at checkout.</p>
+    </div>
+  </div>
+</div>
 {% else %}
-<p class="text-muted">Your cart is empty. <a href="{% url 'shop_catalog' %}">Browse the shop.</a></p>
+<div class="panel panel-pad text-center py-5">
+  <div class="icon-badge mx-auto mb-3"><span class="msym">shopping_bag</span></div>
+  <h2 class="h4">Your cart is empty</h2>
+  <p class="text-muted">Add rackets, balls, shoes or apparel from the shop.</p>
+  <a href="{% url 'shop_catalog' %}" class="btn btn-primary">Browse the shop</a>
+</div>
 {% endif %}
 {% endblock %}

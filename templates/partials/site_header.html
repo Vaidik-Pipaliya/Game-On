@@ -1,0 +1,42 @@
+{% with n=request.resolver_match.url_name %}
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="{% url 'home' %}">
+      <span class="brand-mark"><span class="msym msym-fill">sports_tennis</span></span>
+      <span><span class="brand-name">The Champions Club</span><span class="brand-sub">Tennis · Padel · Badminton · Cricket</span></span>
+    </a>
+    <button class="btn btn-outline-secondary nav-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#siteCollapse" aria-controls="siteCollapse" aria-expanded="false" aria-label="Menu">
+      <span class="msym">menu</span>
+    </button>
+    <div class="collapse site-collapse" id="siteCollapse">
+      <nav class="site-nav" aria-label="Main">
+        <a href="{% url 'plans' %}" {% if n == 'plans' %}class="active" aria-current="page"{% endif %}>Plans &amp; prices</a>
+        <a href="{% url 'availability' %}" {% if n == 'availability' %}class="active" aria-current="page"{% endif %}>Free courts</a>
+        {% if not user.member %}<a href="{% url 'trial' %}" {% if n == 'trial' %}class="active" aria-current="page"{% endif %}>Book a trial</a>{% endif %}
+        <a href="{% url 'shop_catalog' %}" {% if n == 'shop_catalog' or n == 'shop_cart' or n == 'shop_checkout' %}class="active" aria-current="page"{% endif %}>Gear shop</a>
+        <a href="{% url 'enquiry' %}" {% if n == 'enquiry' %}class="active" aria-current="page"{% endif %}>Contact</a>
+        {% if user.is_authenticated %}
+          <a href="{% url 'portal_grid' %}" {% if n == 'portal_grid' or n == 'portal_confirm' %}class="active" aria-current="page"{% endif %}><span class="msym">calendar_month</span>Book a court</a>
+          <a href="{% url 'portal_mine' %}" {% if n == 'portal_mine' %}class="active" aria-current="page"{% endif %}><span class="msym">receipt_long</span>My bookings</a>
+          <a href="{% url 'shop_my_orders' %}" {% if n == 'shop_my_orders' %}class="active" aria-current="page"{% endif %}><span class="msym">inventory_2</span>My orders</a>
+        {% endif %}
+      </nav>
+      <div class="header-user">
+        {% if user.is_authenticated %}
+          {% if is_staff_user %}<a class="btn btn-outline-primary btn-sm" href="{% url 'desk' %}"><span class="msym">admin_panel_settings</span>Staff desk</a>{% endif %}
+          <div class="user-chip">
+            {{ user.first_name|default:user.email }}
+            <small>{% with m=user.member.current_membership %}{% if m %}{{ m.plan.name }} member{% else %}{{ user.get_role_display|default:user.role }}{% endif %}{% endwith %}</small>
+          </div>
+          <span class="avatar" aria-hidden="true">{{ user.first_name|default:user.email|slice:":1"|upper }}</span>
+          <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button class="btn btn-outline-secondary btn-sm" title="Log out"><span class="msym">logout</span><span class="d-lg-none">Log out</span></button>
+          </form>
+        {% else %}
+          <a class="btn btn-primary" href="{% url 'login' %}">Log in</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</header>
+{% endwith %}

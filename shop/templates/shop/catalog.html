@@ -1,46 +1,76 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}Shop{% endblock %}
+{% block title %}Gear shop | Champions Club{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h3 mb-0">Gear shop</h1>
-  <a href="{% url 'shop_cart' %}" class="btn btn-outline-primary">Cart ({{ request.session.cart|length }})</a>
+<div class="page-head">
+  <div>
+    <div class="eyebrow mb-1">The Champions Club / Pro shop</div>
+    <h1 class="page-title">Gear shop</h1>
+    <p class="page-sub">Rackets, balls, shoes, accessories and apparel. Stock is live and shown per size.</p>
+  </div>
+  <a href="{% url 'shop_cart' %}" class="btn btn-outline-primary"><span class="msym">shopping_bag</span>Cart <span class="chip chip-primary">{{ request.session.cart|length }}</span></a>
 </div>
-<div class="d-flex flex-wrap gap-2 mb-3">
-  <a class="btn btn-sm {% if not category %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{% url 'shop_catalog' %}">All</a>
-  {% for value, label in categories %}
-    <a class="btn btn-sm {% if category == value %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?category={{ value }}">{{ label }}</a>
-  {% endfor %}
+
+<div class="panel panel-pad mb-3">
+  <div class="seg">
+    <a class="{% if not category %}active{% endif %}" href="{% url 'shop_catalog' %}">All</a>
+    {% for value, label in categories %}<a class="{% if category == value %}active{% endif %}" href="?category={{ value }}">{{ label }}</a>{% endfor %}
+  </div>
 </div>
+{% if user.is_authenticated and user.member.current_membership %}
+<div class="callout callout-info mb-3"><span><span class="msym">workspace_premium</span> <strong>{{ user.member.current_membership.plan.name }} member:</strong> your shop discount is already applied to the prices below.</span></div>
+{% endif %}
+
 <div class="row g-3">
   {% for item in items %}
-  <div class="col-sm-6 col-lg-4">
-    <div class="bg-white border rounded p-3 h-100 d-flex flex-column">
-      <div class="small text-muted">{{ item.product.get_category_display }}</div>
-      <h2 class="h6 mb-1">{{ item.product.name }}</h2>
-      <div class="mb-2">
-        {% if item.price.kind == "member" and item.price.discount_pct %}
-          <strong>{{ item.price.amount_paise|rupees }}</strong>
-          <span class="text-muted text-decoration-line-through small">{{ item.product.price_paise|rupees }}</span>
-          <span class="badge bg-success">Your member price</span>
-        {% else %}<strong>{{ item.product.price_paise|rupees }}</strong>{% endif %}
+  <div class="col-sm-6 col-xl-4">
+    <article class="product">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <span class="chip chip-primary">{{ item.product.get_category_display }}</span>
       </div>
-      <form method="post" action="{% url 'shop_cart_add' %}" class="mt-auto d-flex gap-2">
+      <h2 class="h4 mb-1">{{ item.product.name }}</h2>
+      <div class="mb-3">
+        {% if item.price.kind == "member" and item.price.discount_pct %}
+          <span class="product-price">{{ item.price.amount_paise|rupees }}</span>
+          <span class="text-muted text-decoration-line-through small ms-1">{{ item.product.price_paise|rupees }}</span>
+          <span class="chip chip-ball ms-1">Your member price</span>
+        {% else %}<span class="product-price">{{ item.product.price_paise|rupees }}</span>{% endif %}
+      </div>
+      <form method="post" action="{% url 'shop_cart_add' %}" class="mt-auto">
         {% csrf_token %}
-        <select name="variant" class="form-select form-select-sm" aria-label="Size">
+        <div class="form-label d-flex justify-content-between"><span>Size</span></div>
+        <div class="size-group mb-3" role="radiogroup" aria-label="Size for {{ item.product.name }}">
           {% for v in item.variants %}
-            <option value="{{ v.pk }}" {% if not v.stock %}disabled{% endif %}>
-              {{ v.size }} &middot; {% if not v.stock %}Out of stock{% elif v.is_low %}Only {{ v.stock }} left{% else %}In stock{% endif %}
-            </option>
+            <label class="size-chip">
+              <input type="radio" name="variant" value="{{ v.pk }}" {% if not v.stock %}disabled{% elif forloop.first %}checked{% endif %}>
+              <span>{{ v.size }}
+                {% if not v.stock %}<small class="d-block text-danger">Out of stock</small>
+                {% elif v.is_low %}<small class="d-block text-warning">Only {{ v.stock }} left</small>
+                {% else %}<small class="d-block text-muted">In stock</small>{% endif %}
+              </span>
+            </label>
           {% endfor %}
-        </select>
-        <input type="number" name="quantity" value="1" min="1" max="10" class="form-control form-control-sm" style="width:4.5rem" aria-label="Quantity">
-        <button class="btn btn-sm btn-primary">Add</button>
+        </div>
+        <div class="d-flex gap-2">
+          <input type="number" name="quantity" value="1" min="1" max="10" class="form-control qty" aria-label="Quantity">
+          <button class="btn btn-primary flex-grow-1"><span class="msym">add_shopping_cart</span>Add to cart</button>
+        </div>
       </form>
-    </div>
+    </article>
   </div>
   {% empty %}
-  <p class="text-muted">No products in this category yet.</p>
+  <div class="col-12"><div class="panel panel-pad text-center text-muted">No products in this category yet.</div></div>
   {% endfor %}
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+  // Preselect the first size that is in stock, so one tap on "Add to cart" always works.
+  document.querySelectorAll(".size-group").forEach(function (group) {
+    if (!group.querySelector("input:checked")) {
+      var first = group.querySelector("input:not(:disabled)");
+      if (first) first.checked = true;
+    }
+  });
+</script>
 {% endblock %}

@@ -1,9 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Contact us | Champions Club{% endblock %}
 {% block content %}
-<div class="col-lg-6">
-  <h1 class="h3">Ask us anything</h1>
-  <p class="text-muted">Tell us what you'd like to play. Someone from the club will call you back, usually the same day. Or call {{ club.phone }}.</p>
-  {% include "crm/_public_form.html" with submit_label="Send enquiry" %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="page-head"><div><h1 class="page-title">Ask us anything</h1><p class="page-sub">Tell us what you'd like to play. Someone from the club will call you back, usually the same day.</p></div></div>
+    {% include "crm/_public_form.html" with submit_label="Send enquiry" %}
+  </div>
+  <div class="col-lg-5">
+    <div class="info-block">
+      <div class="row-item"><span class="msym">call</span><div><strong>Call reception</strong><a href="tel:{{ club.phone }}">{{ club.phone }}</a></div></div>
+      <div class="row-item"><span class="msym">mail</span><div><strong>Email</strong><a href="mailto:{{ club.email }}">{{ club.email }}</a></div></div>
+      <div class="row-item"><span class="msym">schedule</span><div><strong>Opening hours</strong><span class="text-muted">{{ club.hours }}</span></div></div>
+      <div class="row-item"><span class="msym">location_on</span><div><strong>Visit us</strong><span class="text-muted">{{ club.address }}</span></div></div>
+    </div>
+  </div>
 </div>
 {% endblock %}
