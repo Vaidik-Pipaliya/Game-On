@@ -2,5 +2,7 @@
 {% block title %}Staff desk{% endblock %}
 {% block content %}
 <h1 class="h3">Staff desk</h1>
-<p>Member lookup and bookings will appear here.</p>
+<div class="list-group col-md-4">
+  <a href="{% url 'member_search' %}" class="list-group-item list-group-item-action">Members: search and register</a>
+</div>
 {% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}{{ member.full_name }}{% endblock %}
+{% block content %}
+<a href="{% url 'member_search' %}" class="small">&larr; All members</a>
+<div class="bg-white border rounded p-3 my-3 d-flex flex-wrap justify-content-between align-items-start gap-3">
+  <div>
+    <h1 class="h3 mb-1">{{ member.full_name }} {% include "members/_status.html" with membership=current %}</h1>
+    <div class="text-muted">
+      {{ member.phone }}{% if member.email %} &middot; {{ member.email }}{% endif %}
+      &middot; Born {{ member.date_of_birth|date:"j M Y" }}
+    </div>
+    <div>Plan: <strong>{{ current.plan.name|default:"none" }}</strong>{% if current %} &middot; ends {{ current.end_date|date:"j M Y" }}{% endif %}</div>
+    {% if member.guardian %}<div>Guardian: <a href="{% url 'member_detail' member.guardian.pk %}">{{ member.guardian.full_name }}</a></div>{% endif %}
+    {% if member.wards.exists %}<div>Ward{{ member.wards.count|pluralize }}:
+      {% for ward in member.wards.all %}<a href="{% url 'member_detail' ward.pk %}">{{ ward.full_name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+    {% if member.emergency_contact %}<div>Emergency contact: {{ member.emergency_contact }}</div>{% endif %}
+  </div>
+  {% if current %}
+  <form method="post" action="{% url 'member_renew' member.pk %}">{% csrf_token %}
+    <button class="btn btn-primary">Renew membership</button>
+  </form>
+  {% endif %}
+</div>
+
+<h2 class="h5">Memberships</h2>
+<table class="table bg-white border mb-4">
+  <thead><tr><th>Plan</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for m in memberships %}
+    <tr><td>{{ m.plan.name }}</td><td>{{ m.start_date|date:"j M Y" }}</td><td>{{ m.end_date|date:"j M Y" }}</td>
+        <td>{% include "members/_status.html" with membership=m %}</td></tr>
+  {% empty %}<tr><td colspan="4" class="text-muted text-center">No memberships yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+
+<h2 class="h5">Court bookings</h2>
+<table class="table bg-white border mb-4">
+  <thead><tr><th>Court</th><th>When</th><th>Status</th><th class="text-end">Price</th></tr></thead>
+  <tbody>
+  {% for b in bookings %}
+    <tr><td>{{ b.court.name }}</td><td>{{ b.start|date:"j M Y, H:i" }}</td><td>{{ b.status }}</td><td class="text-end">{{ b.price_paise|rupees }}</td></tr>
+  {% empty %}<tr><td colspan="4" class="text-muted text-center">No bookings yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+
+<h2 class="h5">Shop orders</h2>
+<table class="table bg-white border mb-4">
+  <thead><tr><th>Date</th><th>Channel</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for o in orders %}
+    <tr><td>{{ o.created_at|date:"j M Y, H:i" }}</td><td>{{ o.channel }}</td><td>{{ o.status }}</td></tr>
+  {% empty %}<tr><td colspan="3" class="text-muted text-center">No shop orders yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+
+<h2 class="h5">Bar tabs</h2>
+<table class="table bg-white border">
+  <thead><tr><th>Opened</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for t in tabs %}
+    <tr><td>{{ t.opened_at|date:"j M Y, H:i" }}</td><td>{{ t.status }}</td></tr>
+  {% empty %}<tr><td colspan="2" class="text-muted text-center">No bar tabs yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

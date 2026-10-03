@@ -86,6 +86,10 @@ USE_TZ = True
 
 LOGIN_URL = "/login/"
 
+# Dev prints emails in the terminal; production sets EMAIL_BACKEND to SMTP (done in M12).
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "The Champions Club <noreply@championsclub.example>")
+
 # Django's default ("same-origin") cuts the Google sign-in popup off from our page,
 # so it can never hand back the result. This value still blocks unrelated sites.
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"

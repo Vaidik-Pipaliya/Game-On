@@ -1,5 +1,8 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
+
+EXPIRING_DAYS = 14  # a membership with this many days or fewer left is "expiring"
 
 
 class Plan(models.Model):
@@ -31,6 +34,12 @@ class Member(models.Model):
     whatsapp_opt_in = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def current_membership(self):
+        """Latest non-cancelled membership. Works with prefetch_related("memberships__plan") to avoid extra queries."""
+        live = [m for m in self.memberships.all() if not m.cancelled]
+        return max(live, key=lambda m: m.end_date, default=None)
+
     def __str__(self):
         return f"{self.full_name} ({self.phone})"
 
@@ -44,6 +53,23 @@ class Membership(models.Model):
     end_date = models.DateField()
     cancelled = models.BooleanField(default=False)
     reminder_sent_on = models.DateField(null=True, blank=True)
+
+    def status_on(self, day):
+        if self.cancelled:
+            return "cancelled"
+        if self.end_date < day:
+            return "expired"
+        if (self.end_date - day).days <= EXPIRING_DAYS:
+            return "expiring"
+        return "active"
+
+    @property
+    def status(self):
+        return self.status_on(timezone.localdate())
+
+    @property
+    def days_left(self):
+        return (self.end_date - timezone.localdate()).days
 
     def __str__(self):
         return f"{self.member.full_name} - {self.plan} until {self.end_date}"

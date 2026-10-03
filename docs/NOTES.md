@@ -16,3 +16,11 @@
 - Tests mock the Firebase call, so they run without internet or keys.
 - Login uses Google's "Sign in with Google" button (GIS), then `signInWithCredential` in Firebase, then our server verifies the Firebase token. We moved off Firebase's popup helper because it needs HTTPS and Chrome partitions its storage.
 - Django's default `Cross-Origin-Opener-Policy: same-origin` broke the Google popup (blank window / popup-closed-by-user). We set `SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"`.
+
+## M3 - Members, plans, expiry, lookup
+- Rules live in `members/services.py` (not views): `register_member` creates Member + Membership in one `transaction.atomic()`; a Junior needs age < 18 and an adult guardian, and a minor can only take the Junior plan.
+- Membership status (active/expiring/expired/cancelled) is computed by `Membership.status_on(day)`, never stored. Expiring = 14 days or fewer left.
+- Renewal extends from the old end date if still valid (no paid days lost), otherwise starts today.
+- `send_renewal_reminders` emails at 14/7/1 days; `reminder_sent_on` and a "newer membership exists" check prevent duplicates and reminders to people who already renewed. Run `manage.py send_renewal_reminders` daily (cron on Render).
+- Search is `icontains` on name/phone, limited to 20 rows: fine for thousands of members; at 100k add an index/trigram search.
+- Form validates formats (10-digit phone, +91 stripped, DOB not in future); the service validates business rules. The money filter `rupees` turns paise into rupees for display.

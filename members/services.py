@@ -1,0 +1,101 @@
+"""Member business rules. Views and forms call these; they hold no HTML or request logic."""
+
+from datetime import timedelta
+
+from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
+from django.db import transaction
+from django.db.models import Exists, OuterRef, Q
+from django.utils import timezone
+
+from .models import Member, Membership
+
+ADULT_AGE = 18
+REMINDER_DAYS = (14, 7, 1)
+
+
+def age_on(born, day):
+    return day.year - born.year - ((day.month, day.day) < (born.month, born.day))
+
+
+def register_member(*, full_name, phone, email, date_of_birth, plan, guardian=None,
+                    emergency_contact="", whatsapp_opt_in=False, today=None):
+    """Create the member and their first membership together, or neither."""
+    today = today or timezone.localdate()
+    is_minor = age_on(date_of_birth, today) < ADULT_AGE
+
+    if is_minor and not plan.junior_only:
+        raise ValidationError("Members under 18 must take the Junior plan.")
+    if plan.junior_only and not is_minor:
+        raise ValidationError("The Junior plan is only for members under 18.")
+    if plan.junior_only:
+        if guardian is None:
+            raise ValidationError("A Junior member needs a guardian. Register the guardian first, then enter their phone number.")
+        if age_on(guardian.date_of_birth, today) < ADULT_AGE:
+            raise ValidationError("The guardian must be an adult.")
+    else:
+        guardian = None
+
+    with transaction.atomic():
+        member = Member.objects.create(
+            full_name=full_name, phone=phone, email=email, date_of_birth=date_of_birth,
+            emergency_contact=emergency_contact, guardian=guardian, whatsapp_opt_in=whatsapp_opt_in,
+        )
+        Membership.objects.create(
+            member=member, plan=plan, start_date=today, end_date=today + timedelta(days=plan.duration_days),
+        )
+    return member
+
+
+def renew_membership(member, today=None):
+    """Extend on the same plan. An unexpired membership is extended from its end date, so no paid days are lost."""
+    today = today or timezone.localdate()
+    last = member.current_membership
+    if last is None:
+        raise ValidationError("This member has no membership to renew.")
+    start = today if last.end_date < today else last.end_date + timedelta(days=1)
+    return Membership.objects.create(
+        member=member, plan=last.plan, start_date=start, end_date=start + timedelta(days=last.plan.duration_days),
+    )
+
+
+def search_members(query, limit=20):
+    """Name or phone contains the text. Empty search lists the newest members."""
+    members = Member.objects.prefetch_related("memberships__plan")
+    query = query.strip()
+    if query:
+        members = members.filter(Q(full_name__icontains=query) | Q(phone__icontains=query)).order_by("full_name")
+    else:
+        members = members.order_by("-created_at")
+    return members[:limit]
+
+
+def send_renewal_reminders(today=None):
+    """Email members whose membership ends in 14, 7 or 1 days. Returns how many emails were sent."""
+    today = today or timezone.localdate()
+    renewed_later = Membership.objects.filter(
+        member=OuterRef("member"), cancelled=False, end_date__gt=OuterRef("end_date")
+    )
+    due = (
+        Membership.objects.filter(cancelled=False, end_date__in=[today + timedelta(days=d) for d in REMINDER_DAYS])
+        .exclude(Exists(renewed_later))  # already renewed: no reminder
+        .exclude(reminder_sent_on=today)  # running the command twice must not double-email
+        .exclude(member__email="")
+        .select_related("member", "plan")
+    )
+    sent = 0
+    for membership in due:
+        days = (membership.end_date - today).days
+        send_mail(
+            subject=f"Your {membership.plan.name} membership ends in {days} day{'s' if days != 1 else ''}",
+            message=(
+                f"Hi {membership.member.full_name},\n\nYour {membership.plan.name} membership at The Champions Club "
+                f"ends on {membership.end_date:%d %b %Y}. Visit the front desk to renew and keep your member rates.\n"
+            ),
+            from_email=None,
+            recipient_list=[membership.member.email],
+        )
+        membership.reminder_sent_on = today
+        membership.save(update_fields=["reminder_sent_on"])
+        sent += 1
+    return sent
