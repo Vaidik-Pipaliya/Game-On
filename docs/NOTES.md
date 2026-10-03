@@ -24,3 +24,10 @@
 - `send_renewal_reminders` emails at 14/7/1 days; `reminder_sent_on` and a "newer membership exists" check prevent duplicates and reminders to people who already renewed. Run `manage.py send_renewal_reminders` daily (cron on Render).
 - Search is `icontains` on name/phone, limited to 20 rows: fine for thousands of members; at 100k add an index/trigram search.
 - Form validates formats (10-digit phone, +91 stripped, DOB not in future); the service validates business rules. The money filter `rupees` turns paise into rupees for display.
+
+## M4 - One pricing function
+- `members/pricing.py: price_for(item_type, base_paise, membership, free_hours_left=0)` returns `Price(amount_paise, kind, discount_pct)`; courts, shop and bar all call it, so a discount rule exists in exactly one place.
+- Only active or expiring memberships get benefits; expired or cancelled fall back to walk-in automatically (no job needed).
+- Pure function: free-hours-left is passed in by the booking code (M5), so it needs no database and tests are instant.
+- Integer maths with round-half-up (`+50`), never floats. `kind` ("free"/"member"/"walk_in") and `discount_pct` feed the visible "Gold member discount -10%" bill line in M9.
+- The price is stored on the Booking/Order line when made, so a later plan change can't rewrite history (tested in M5).
