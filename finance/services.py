@@ -9,6 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from courts.models import Booking
+from shop.models import Order
 
 from .models import Ledger, Method, Payment, Source
 
@@ -99,6 +100,7 @@ def mark_payment_captured(*, razorpay_order_id, razorpay_payment_id, amount_pais
             source=payment.source, method=Method.ONLINE, amount_paise=payment.amount_paise,
             reference_id=payment.reference_id, payment=payment, note=f"Razorpay {razorpay_payment_id}",
         )
-        if payment.source == Source.COURT:
-            Booking.objects.filter(pk=payment.reference_id).update(is_paid=True, payment_method=Method.ONLINE)
+        paid_for = {Source.COURT: Booking, Source.SHOP: Order}.get(payment.source)
+        if paid_for:
+            paid_for.objects.filter(pk=payment.reference_id).update(is_paid=True, payment_method=Method.ONLINE)
         return True

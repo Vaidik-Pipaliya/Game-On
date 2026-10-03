@@ -11,7 +11,10 @@
   <div class="container">
     <a class="navbar-brand" href="{% url 'home' %}">Champions Club</a>
     <div class="ms-auto d-flex align-items-center gap-2 text-white">
+      <a class="nav-link text-white" href="{% url 'shop_catalog' %}">Shop</a>
       {% if user.is_authenticated %}
+        <a class="nav-link text-white" href="{% url 'shop_my_orders' %}">My orders</a>
+        {% if user.is_superuser or user.role != "member" %}<a class="nav-link text-white" href="{% url 'desk' %}">Staff desk</a>{% endif %}
         <span class="small">{{ user.email }} ({{ user.role }})</span>
         <form method="post" action="{% url 'logout' %}">{% csrf_token %}
           <button class="btn btn-sm btn-outline-light">Log out</button>

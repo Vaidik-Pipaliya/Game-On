@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Counter sale{% endblock %}
+{% block content %}
+{% include "shop/_nav.html" %}
+<h1 class="h3 mb-3">Counter sale</h1>
+<form method="post" novalidate class="bg-white border rounded p-3 col-lg-8">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+  {{ lines.management_form }}
+  {% for row in lines %}
+    <div class="row g-2 mb-2">
+      <div class="col-9">{{ row.variant }}{% for e in row.variant.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+      <div class="col-3">{{ row.quantity }}{% for e in row.quantity.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+    </div>
+  {% endfor %}
+  <div class="row g-2 mt-2">
+    {% for field in form %}
+      <div class="col-md-6">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+        {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+  <button class="btn btn-primary mt-3">Take payment</button>
+</form>
+{% endblock %}

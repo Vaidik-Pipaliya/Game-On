@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from members.models import Member
@@ -57,13 +58,22 @@ class Order(models.Model):
         CANCELLED = "cancelled"
 
     member = models.ForeignKey(Member, null=True, blank=True, on_delete=models.PROTECT)
+    placed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     customer_name = models.CharField(max_length=120, blank=True)
+    customer_phone = models.CharField(max_length=15, blank=True)
     channel = models.CharField(max_length=10, choices=Channel.choices)
     fulfilment = models.CharField(max_length=10, choices=Fulfilment.choices, default=Fulfilment.PICKUP)
     delivery_address = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PLACED)
-    total_paise = models.PositiveIntegerField(default=0)
+    delivery_fee_paise = models.PositiveIntegerField(default=0)
+    total_paise = models.PositiveIntegerField(default=0, help_text="Lines after member discount + delivery fee")
+    payment_method = models.CharField(max_length=10, blank=True)
+    is_paid = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def who(self):
+        return self.member.full_name if self.member else (self.customer_name or "Walk-in")
 
 
 class OrderLine(models.Model):

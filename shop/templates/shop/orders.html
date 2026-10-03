@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Shop orders{% endblock %}
+{% block content %}
+{% include "shop/_nav.html" %}
+<h1 class="h3 mb-3">Online orders to fulfil</h1>
+{% for order in open_orders %}
+<div class="bg-white border rounded p-3 mb-2">
+  <div class="d-flex flex-wrap justify-content-between gap-2">
+    <div>
+      <strong>#{{ order.pk }}</strong> {{ order.who }} {{ order.customer_phone }}
+      &middot; {{ order.get_fulfilment_display }}{% if order.delivery_address %}: {{ order.delivery_address }}{% endif %}
+      &middot; {{ order.total_paise|rupees }}
+      {% if order.is_paid %}<span class="badge bg-success">Paid online</span>{% else %}<span class="badge bg-warning text-dark">Unpaid</span>{% endif %}
+      <span class="badge bg-secondary">{{ order.get_status_display }}</span>
+    </div>
+    <div class="d-flex gap-2">
+      {% if order.status == "placed" %}
+        <form method="post" action="{% url 'shop_order_action' order.pk 'ready' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">Mark ready</button></form>
+      {% endif %}
+      <form method="post" action="{% url 'shop_order_action' order.pk 'complete' %}" class="d-flex gap-1">{% csrf_token %}
+        {% if not order.is_paid %}
+          <select name="payment_method" class="form-select form-select-sm w-auto" aria-label="Paid by">
+            {% for m in methods %}<option value="{{ m.value }}">{{ m.label }}</option>{% endfor %}
+          </select>
+        {% endif %}
+        <button class="btn btn-sm btn-primary">{% if order.fulfilment == "delivery" %}Delivered{% else %}Collected{% endif %}</button>
+      </form>
+      <form method="post" action="{% url 'shop_order_action' order.pk 'cancel' %}" onsubmit="return confirm('Cancel this order and put the stock back?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Cancel</button></form>
+    </div>
+  </div>
+  <ul class="small mb-0 mt-1">{% for line in order.lines.all %}<li>{{ line.quantity }} &times; {{ line.variant }}</li>{% endfor %}</ul>
+</div>
+{% empty %}
+<p class="text-muted">No online orders waiting.</p>
+{% endfor %}
+
+<h2 class="h5 mt-4">Recent sales and orders</h2>
+<div class="table-responsive bg-white border rounded">
+  <table class="table mb-0">
+    <thead><tr><th>#</th><th>When</th><th>Channel</th><th>Customer</th><th>Status</th><th class="text-end">Total</th></tr></thead>
+    <tbody>
+    {% for o in recent %}
+      <tr><td>{{ o.pk }}</td><td>{{ o.created_at|date:"j M, H:i" }}</td><td>{{ o.channel }}</td><td>{{ o.who }}</td><td>{{ o.get_status_display }}</td><td class="text-end">{{ o.total_paise|rupees }}</td></tr>
+    {% empty %}<tr><td colspan="6" class="text-center text-muted">No sales yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

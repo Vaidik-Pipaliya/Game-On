@@ -7,7 +7,7 @@
   <p class="text-muted">{{ payment.get_source_display }} #{{ payment.reference_id }} &middot; Razorpay test mode</p>
   <button id="pay-btn" class="btn btn-primary btn-lg w-100">Pay {{ payment.amount_paise|rupees }} online</button>
   <div id="pay-error" class="alert alert-danger mt-3 d-none" role="alert"></div>
-  <a href="{% url 'booking_grid' %}" class="btn btn-link mt-2">Pay at the desk instead</a>
+  <a href="{{ back_url }}" class="btn btn-link mt-2">Pay later instead</a>
 </div>
 {% csrf_token %}
 {{ checkout|json_script:"checkout-options" }}

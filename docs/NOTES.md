@@ -61,3 +61,12 @@
 - **Exactly once:** `mark_payment_captured` locks the Payment row and checks its status; `razorpay_payment_id` is unique. Callback + webhook + retries -> one ledger row (threaded test: 10 simultaneous captures -> 1 row). Wrong amount -> ignored.
 - If Razorpay is down or keys are missing, `OnlinePaymentUnavailable` -> the booking is kept as unpaid and staff can "Take payment" later.
 - Tests: 30 in finance (+ updates elsewhere): ledger rules, signatures, replays, strict-CSRF client, rollback, refunds, membership fees.
+
+## M8 - Shop (one shelf for counter and online)
+- **Safe stock:** `take_stock` is one SQL statement: `UPDATE ... SET stock = stock - q WHERE id = v AND stock >= q`. If it updates 0 rows the item is out of stock. The check and the subtraction happen together inside the database, so two tills can't both sell the last pair and stock can never go negative. Threaded test: 10 buyers (counter + online) for 1 pair -> exactly 1 order.
+- `place_order` is used by both the counter and online checkout. One `transaction.atomic()`: if any line fails, earlier lines' stock is rolled back and no order/payment is saved. Lines are processed in variant-id order so two orders can't deadlock.
+- Member discount comes from `price_for("shop", ...)` and is frozen on each `OrderLine`.
+- Online orders take stock when placed (simplest "reserve"); cancelling returns it and refunds if paid. Pickup or delivery (flat ₹50 fee, address required). Online orders can be paid with Razorpay or at collection.
+- **Low-stock alert:** fires once when a sale crosses the reorder level (not on every later sale); shown to staff and listed on the Stock page. Email to staff is added in M12.
+- Session cart (`request.session["cart"]`), checkout needs Google login. Customers can only open the payment page of their own order.
+- Staff (owner / shop_staff / front_desk): counter sale (formset of 5 lines), online orders (ready -> collected/delivered, cancel), stock + restock.

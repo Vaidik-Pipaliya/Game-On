@@ -8,31 +8,50 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from accounts.permissions import role_required
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+
+from accounts.permissions import STAFF_ROLES
 from courts.models import Booking
+from shop.models import Order
 
 from .models import Payment, Source
 from .services import checkout_signature_is_valid, mark_payment_captured, webhook_signature_is_valid
 
-desk_only = role_required("owner", "front_desk")
+
+def _is_staff(user):
+    return user.is_superuser or user.role in STAFF_ROLES
 
 
-def _after_payment_url(payment):
+def _payment_for(request, pk):
+    """Staff can open any payment; a customer only the payment for their own online shop order."""
+    payment = get_object_or_404(Payment, pk=pk)
+    if _is_staff(request.user):
+        return payment
+    if payment.source == Source.SHOP and Order.objects.filter(pk=payment.reference_id, placed_by=request.user).exists():
+        return payment
+    raise PermissionDenied
+
+
+def _after_payment_url(request, payment):
     if payment.source == Source.COURT:
         booking = Booking.objects.filter(pk=payment.reference_id).first()
         if booking:
             return f"/desk/book/?date={timezone.localtime(booking.start).date().isoformat()}"
+    if payment.source == Source.SHOP:
+        return "/desk/shop/orders/" if _is_staff(request.user) else "/shop/my-orders/"
     return "/desk/"
 
 
-@desk_only
+@login_required
 def pay_page(request, pk):
-    payment = get_object_or_404(Payment, pk=pk)
+    payment = _payment_for(request, pk)
     if payment.status == Payment.Status.PAID:
         messages.info(request, "This payment is already complete.")
-        return redirect(_after_payment_url(payment))
+        return redirect(_after_payment_url(request, payment))
     return render(request, "finance/pay.html", {
         "payment": payment,
+        "back_url": _after_payment_url(request, payment),
         "checkout": {  # only public values go to the browser; the secret never does
             "key": settings.RAZORPAY_KEY_ID,
             "order_id": payment.razorpay_order_id,
@@ -44,18 +63,18 @@ def pay_page(request, pk):
     })
 
 
-@desk_only
+@login_required
 @require_POST
 def pay_verify(request, pk):
     """Razorpay Checkout's success callback. We trust nothing the browser sends until the signature checks out."""
-    payment = get_object_or_404(Payment, pk=pk)
+    payment = _payment_for(request, pk)
     payment_id = request.POST.get("razorpay_payment_id", "")
     signature = request.POST.get("razorpay_signature", "")
     if not checkout_signature_is_valid(payment.razorpay_order_id, payment_id, signature):
         return JsonResponse({"error": "Payment could not be verified. No money was recorded."}, status=400)
     mark_payment_captured(razorpay_order_id=payment.razorpay_order_id, razorpay_payment_id=payment_id)
     messages.success(request, "Payment received online.")
-    return JsonResponse({"ok": True, "next": _after_payment_url(payment)})
+    return JsonResponse({"ok": True, "next": _after_payment_url(request, payment)})
 
 
 @csrf_exempt  # Razorpay's servers can't send our CSRF token; the HMAC signature protects this endpoint instead

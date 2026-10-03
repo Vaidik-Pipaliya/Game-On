@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Check out{% endblock %}
+{% block content %}
+<div class="col-lg-6">
+  <h1 class="h3 mb-3">Check out</h1>
+  <ul class="small text-muted">{% for variant, qty in items %}<li>{{ qty }} &times; {{ variant }}</li>{% endfor %}</ul>
+  <form method="post" novalidate class="bg-white border rounded p-3">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+    {% for field in form %}
+      <div class="mb-3">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+        {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+    <button class="btn btn-primary">Place order</button>
+    <a href="{% url 'shop_cart' %}" class="btn btn-link">Back to cart</a>
+  </form>
+</div>
+{% endblock %}

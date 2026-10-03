@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}My orders{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">My orders</h1>
+{% for order in orders %}
+  <div class="bg-white border rounded p-3 mb-2">
+    <div class="d-flex justify-content-between flex-wrap">
+      <strong>Order #{{ order.pk }}</strong>
+      <span>{{ order.get_status_display }} &middot; {{ order.get_fulfilment_display }} &middot; {{ order.total_paise|rupees }}
+        {% if order.is_paid %}<span class="badge bg-success">Paid</span>{% else %}<span class="badge bg-warning text-dark">Pay at the club</span>{% endif %}</span>
+    </div>
+    <ul class="small mb-0 mt-1">{% for line in order.lines.all %}<li>{{ line.quantity }} &times; {{ line.variant }} &middot; {{ line.unit_price_paise|rupees }}</li>{% endfor %}</ul>
+  </div>
+{% empty %}
+  <p class="text-muted">No orders yet. <a href="{% url 'shop_catalog' %}">Visit the shop.</a></p>
+{% endfor %}
+{% endblock %}
