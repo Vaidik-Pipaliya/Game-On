@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<div class="col-md-5 mx-auto text-center">
+  <h1 class="h3 mb-3">Log in</h1>
+  <button id="google-btn" class="btn btn-primary btn-lg w-100">Continue with Google</button>
+  <div id="login-error" class="alert alert-danger mt-3 d-none" role="alert"></div>
+</div>
+{% csrf_token %}
+{{ firebase_config|json_script:"firebase-config" }}
+{{ next|json_script:"next-url" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+  firebase.initializeApp(JSON.parse(document.getElementById("firebase-config").textContent));
+  const errorBox = document.getElementById("login-error");
+  const nextUrl = JSON.parse(document.getElementById("next-url").textContent);
+
+  function showError(text) {
+    errorBox.textContent = text;
+    errorBox.classList.remove("d-none");
+  }
+
+  document.getElementById("google-btn").addEventListener("click", async () => {
+    errorBox.classList.add("d-none");
+    try {
+      // 1. Google popup -> Firebase gives us a signed ID token.
+      const result = await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      const idToken = await result.user.getIdToken();
+      // 2. Send the token to Django, which verifies it and starts a session.
+      const response = await fetch("{% url 'firebase_login' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+        },
+        body: JSON.stringify({ id_token: idToken, next: nextUrl }),
+      });
+      const data = await response.json();
+      if (!response.ok) return showError(data.error);
+      window.location.href = data.next;
+    } catch (err) {
+      showError("Google sign-in was cancelled or failed. Please try again.");
+    }
+  });
+</script>
+{% endblock %}
