@@ -52,6 +52,12 @@
       <li class="list-group-item d-flex justify-content-between fw-bold"><span>Total owed</span><span>{{ owed.total|rupees }}</span></li>
     </ul>
     <p class="small">Expenses this month (salaries): <strong>{{ month_expenses|rupees }}</strong></p>
+    {% if refunds_waiting %}
+    <div class="alert alert-warning small" role="alert">
+      <strong>{{ refunds_waiting }} online refund{{ refunds_waiting|pluralize }} waiting</strong> to be sent back through Razorpay.
+      <form method="post" action="{% url 'retry_refunds' %}" class="mt-1">{% csrf_token %}<button class="btn btn-sm btn-warning">Send now</button></form>
+    </div>
+    {% endif %}
   </div>
 </div>
 

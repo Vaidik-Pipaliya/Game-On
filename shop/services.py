@@ -6,7 +6,7 @@ from django.db.models import F
 
 from accounts.audit import record as audit
 from finance.models import Method, Source
-from finance.services import DESK_METHODS, record_payment, record_refund
+from finance.services import DESK_METHODS, record_payment, record_refund, request_gateway_refund
 from members.pricing import price_for
 from notifications.services import notify_low_stock
 
@@ -153,6 +153,8 @@ def cancel_order(order, by=None):
                 source=Source.SHOP, method=order.payment_method, amount_paise=order.total_paise,
                 reference_id=order.pk, note=f"Cancelled shop order #{order.pk}",
             )
+            if order.payment_method == Method.ONLINE:
+                request_gateway_refund(source=Source.SHOP, reference_id=order.pk)
         order.status = Order.Status.CANCELLED
         order.save(update_fields=["status"])
         audit(by, "order.cancel", order, f"Cancelled shop order #{order.pk}",

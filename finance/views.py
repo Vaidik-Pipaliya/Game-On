@@ -22,7 +22,10 @@ from .forms import InvoiceForm
 from .invoicing import create_invoice, gst_summary, mark_invoice_paid
 from .models import Invoice, Ledger, Method, Payment, Source
 from .reports import amounts_owed, expenses, period_ranges, period_summary
-from .services import DESK_METHODS, checkout_signature_is_valid, mark_payment_captured, webhook_signature_is_valid
+from .services import (
+    DESK_METHODS, checkout_signature_is_valid, mark_payment_captured, refunds_waiting, retry_failed_refunds,
+    webhook_signature_is_valid,
+)
 
 
 def _is_staff(user):
@@ -134,6 +137,7 @@ def dashboard(request):
         ],
         "method_totals": [selected["by_method"][m] for m in Method.values],
         "owed": amounts_owed(),
+        "refunds_waiting": refunds_waiting().count(),
         "month_expenses": expenses(*local_day_bounds(month_start, month_days)),
         "charts": {
             "trend": revenue_trend(today),
@@ -255,3 +259,15 @@ def gst_report(request):
         lines = [(f"{r['rate']}%", r["count"], *(f"{r[k] / 100:.2f}" for k in ("taxable", "cgst", "sgst", "total"))) for r in rows]
         return _csv_response(f"gst_{month:%Y_%m}.csv", ["gst_rate", "invoices", "taxable", "cgst", "sgst", "total"], lines)
     return render(request, "finance/gst.html", {"month": month, "rows": rows, "totals": totals})
+
+
+@owner_only
+@require_POST
+def retry_refunds(request):
+    sent = retry_failed_refunds()
+    waiting = refunds_waiting().count()
+    if waiting:
+        messages.error(request, f"{sent} refund(s) sent to Razorpay; {waiting} still failing. Check the Razorpay dashboard or try again later.")
+    else:
+        messages.success(request, f"{sent} refund(s) sent to Razorpay. Nothing is waiting.")
+    return redirect("owner_dashboard")

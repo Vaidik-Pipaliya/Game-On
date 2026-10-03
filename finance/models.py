@@ -33,6 +33,11 @@ class Payment(models.Model):
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.CREATED)
     created_at = models.DateTimeField(auto_now_add=True)
     paid_at = models.DateTimeField(null=True, blank=True)
+    # Set once Razorpay has been asked to return the money (full refunds only). refund_error is set
+    # while a refund is waiting to be retried.
+    refund_id = models.CharField(max_length=64, blank=True)
+    refunded_paise = models.PositiveIntegerField(default=0)
+    refund_error = models.CharField(max_length=300, blank=True)
 
 
 class LedgerQuerySet(models.QuerySet):

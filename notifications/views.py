@@ -9,6 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from accounts.permissions import role_required
+from finance.services import retry_failed_refunds
 from members.services import send_renewal_reminders
 
 from .models import Notification
@@ -57,6 +58,7 @@ def _run_booking_reminders(request):
 CRON_JOBS = {
     "booking-reminders": _run_booking_reminders,
     "retry-notifications": lambda request: retry_failed(),
+    "retry-refunds": lambda request: retry_failed_refunds(),
     "renewal-reminders": lambda request: send_renewal_reminders(),
 }
 

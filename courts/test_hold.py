@@ -107,7 +107,7 @@ class HoldPaymentTests(HoldFixtures, TestCase):
         self.assertEqual((booking.status, booking.is_paid), ("cancelled", False))
         self.assertEqual(Ledger.objects.filter(source="court").aggregate(t=Sum("amount_paise"))["t"], 0)  # +68000 then -68000
         self.assertEqual(AuditLog.objects.get().action, "booking.payment_refunded")
-        self.assertIn("Razorpay dashboard", Ledger.objects.get(kind="refund").note)
+        self.assertIn("through Razorpay", Ledger.objects.get(kind="refund").note)
 
     def test_second_payment_for_an_already_paid_booking_is_refunded(self):
         booking = self.hold(self.member)

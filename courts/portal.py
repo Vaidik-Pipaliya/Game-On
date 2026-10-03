@@ -127,8 +127,10 @@ def cancel(request, member, pk):
     except ValidationError as error:
         messages.error(request, error.messages[0])
     else:
-        if result.refund_paise:
-            messages.success(request, f"Booking cancelled. Your refund of {rupees(result.refund_paise)} is recorded and the club will return it to how you paid.")
+        if result.refund_paise and booking.payment_method == "online":
+            messages.success(request, f"Booking cancelled. Your refund of {rupees(result.refund_paise)} is on its way back to how you paid; it can take a few days to show up.")
+        elif result.refund_paise:
+            messages.success(request, f"Booking cancelled. Your refund of {rupees(result.refund_paise)} is recorded; the club will return it to how you paid.")
         elif booking.is_paid and booking.price_paise:
             messages.success(request, "Booking cancelled. No refund: it is inside the 24-hour window.")
         else:

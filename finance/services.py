@@ -118,3 +118,65 @@ def mark_payment_captured(*, razorpay_order_id, razorpay_payment_id, amount_pais
         elif payment.source == Source.SHOP:
             Order.objects.filter(pk=payment.reference_id).update(is_paid=True, payment_method=Method.ONLINE)
         return True
+
+
+# ---- Refunds through Razorpay ----
+
+def refund_gateway_payment(payment_pk):
+    """Ask Razorpay to return a captured online payment in full. Safe to call again: it acts only once.
+
+    Returns True when the money has been (or already was) handed back, False when Razorpay refused or
+    couldn't be reached; the error is kept on the Payment so the owner can retry from the dashboard.
+    The ledger refund row is written by the caller in the same transaction as the cancellation; this
+    call happens after that commits, so a gateway problem never blocks a cancellation.
+    """
+    with transaction.atomic():
+        payment = Payment.objects.select_for_update().get(pk=payment_pk)  # two retries can't both refund
+        if payment.status != Payment.Status.PAID or not payment.razorpay_payment_id:
+            return False
+        if payment.refund_id:
+            return True
+        try:
+            reply = _razorpay_client().payment.refund(payment.razorpay_payment_id, {
+                "amount": payment.amount_paise,
+                "notes": {"reason": "Cancelled", "source": payment.source, "reference_id": str(payment.reference_id)},
+            })
+        except Exception as error:  # gateway boundary: any failure means "try again later"
+            payment.refund_error = str(error)[:300] or "Razorpay refused the refund."
+            payment.save(update_fields=["refund_error"])
+            return False
+        payment.refund_id = reply["id"]
+        payment.refunded_paise = payment.amount_paise
+        payment.refund_error = ""
+        payment.save(update_fields=["refund_id", "refunded_paise", "refund_error"])
+        return True
+
+
+PENDING_REFUND = "Waiting to be sent to Razorpay"
+
+
+def request_gateway_refund(*, payment=None, source=None, reference_id=None):
+    """Call this inside the transaction that cancels / refunds, for something paid online.
+
+    It marks the payment "refund pending" right now, in that same transaction, so the owed refund can
+    never be forgotten (it shows up under "refunds waiting" until it succeeds). Razorpay itself is
+    asked only after the transaction commits. Cash, card and UPI payments taken at the desk have no
+    Payment row, so for them this does nothing.
+    """
+    if payment is None:
+        payment = Payment.objects.select_for_update().filter(
+            source=source, reference_id=reference_id, status=Payment.Status.PAID, refund_id=""
+        ).order_by("id").first()
+    if payment is None or payment.pk is None:
+        return None
+    Payment.objects.filter(pk=payment.pk, refund_id="").update(refund_error=PENDING_REFUND)
+    transaction.on_commit(lambda: refund_gateway_payment(payment.pk))
+    return payment.pk
+
+
+def refunds_waiting():
+    return Payment.objects.filter(status=Payment.Status.PAID, refund_id="").exclude(refund_error="")
+
+
+def retry_failed_refunds():
+    return sum(1 for payment in refunds_waiting() if refund_gateway_payment(payment.pk))

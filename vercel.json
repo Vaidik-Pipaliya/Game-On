@@ -3,6 +3,7 @@
   "regions": ["sin1"],
   "crons": [
     { "path": "/cron/renewal-reminders/", "schedule": "30 0 * * *" },
-    { "path": "/cron/retry-notifications/", "schedule": "30 6 * * *" }
+    { "path": "/cron/retry-notifications/", "schedule": "30 6 * * *" },
+    { "path": "/cron/retry-refunds/", "schedule": "0 7 * * *" }
   ]
 }

@@ -11,7 +11,7 @@ from django.utils import timezone
 from accounts.audit import record as audit
 from config.clock import local_day_bounds
 from finance.models import Method, Source
-from finance.services import DESK_METHODS, record_payment, record_refund
+from finance.services import DESK_METHODS, record_payment, record_refund, request_gateway_refund
 from members.models import Member
 from members.pricing import price_for
 from notifications.services import notify_booking_after_commit
@@ -208,6 +208,8 @@ def cancel_booking(booking, *, now=None, by=None):
                 source=Source.COURT, method=booking.payment_method, amount_paise=refund,
                 reference_id=booking.pk, note=f"Cancelled booking #{booking.pk}",
             )
+            if booking.payment_method == Method.ONLINE:
+                request_gateway_refund(source=Source.COURT, reference_id=booking.pk)  # money goes back via Razorpay
         audit(by, "booking.cancel", booking, f"Cancelled booking #{booking.pk} ({booking.court.name} {booking.start:%d %b %H:%M})",
               refund_paise=refund, price_paise=booking.price_paise, method=booking.payment_method)
         notify_booking_after_commit(booking, "booking_cancelled")
@@ -371,12 +373,12 @@ def apply_online_payment(booking_id, payment):
 
 
 def _refund_online(booking, payment, reason):
-    """Money arrived but the booking can't be honoured: reverse it in the ledger and log why.
-
-    The money itself is returned from the Razorpay dashboard (limitation: no refund API call yet)."""
+    """Money arrived but the booking can't be honoured: reverse it in the ledger, log why, and have
+    Razorpay return the money (after this transaction commits)."""
     record_refund(
         source=Source.COURT, method=Method.ONLINE, amount_paise=payment.amount_paise, reference_id=booking.pk,
-        note=f"{reason}. Refund via the Razorpay dashboard.",
+        note=f"{reason}. Refund sent back through Razorpay.",
     )
+    request_gateway_refund(payment=payment)
     audit(None, "booking.payment_refunded", booking, f"{reason}: booking #{booking.pk}", amount_paise=payment.amount_paise)
     return "refunded"
