@@ -31,3 +31,14 @@
 - Pure function: free-hours-left is passed in by the booking code (M5), so it needs no database and tests are instant.
 - Integer maths with round-half-up (`+50`), never floats. `kind` ("free"/"member"/"walk_in") and `discount_pct` feed the visible "Gold member discount -10%" bill line in M9.
 - The price is stored on the Booking/Order line when made, so a later plan change can't rewrite history (tested in M5).
+
+## M5 - Court booking engine (core depth)
+- **No double booking is enforced by PostgreSQL**, not Python: `ExclusionConstraint` on `TSTZRANGE(start, end)` + `court` with `&&` (overlaps) and `=`, only for `status='confirmed' AND kind='exclusive'`. Needs the `btree_gist` extension (migration `courts.0002`). Ranges are half-open `[start, end)` so 18:00-19:00 and 19:00-20:00 don't clash; 18:00 and 18:30 do.
+- A `CheckConstraint` also forces whole-court bookings to be exactly 1 hour.
+- **Max 2 per day:** `book_court` runs in `transaction.atomic()` and locks the member row with `select_for_update()`. A second request for the same member waits for the first to commit, so both can't read "1 booking" and both pass. Only `confirmed` bookings count, on the club-local day, so cancelling returns quota. Walk-in guests (no Member row) are not limited.
+- Overlap -> the DB raises IntegrityError -> we check the constraint name and raise a friendly `SlotTaken` ("Court 1 is taken at 18:30. Pick another court or time.").
+- Price comes from `price_for` and is stored on the booking. Free hours left this month = plan allowance minus confirmed bookings priced 0 (so cancelling gives the free hour back). Member rate depends on the *session date*, not the booking date.
+- Slots: start on :00/:30, club hours 06:00-22:00 (assumption, constants in `courts/services.py`), not in the past.
+- Tests: 26, including `ConcurrencyTests` with real threads and real connections: 50 simultaneous requests for one slot -> exactly 1 booking; 1 member racing for 5 slots -> exactly 2.
+- Scaling: the constraint is backed by a GiST index, so overlap checks stay fast as bookings grow; the daily-limit count uses one indexed range query per request.
+- Not yet: cancel/refund (M6/M7), Friday social play (M6: it must also block exclusive bookings), booking screens (M6).

@@ -1,7 +1,19 @@
+from datetime import timedelta
+
 from django.conf import settings
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import DateTimeRangeField, RangeBoundary, RangeOperators
 from django.db import models
+from django.db.models import F, Func, Q
 
 from members.models import Member
+
+
+class TsTzRange(Func):
+    """SQL TSTZRANGE(start, end): the time span a booking occupies, as one value Postgres can compare."""
+
+    function = "TSTZRANGE"
+    output_field = DateTimeRangeField()
 
 
 class Sport(models.Model):
@@ -62,7 +74,24 @@ class Booking(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # The ExclusionConstraint that blocks overlapping bookings is added in M5.
+    class Meta:
+        constraints = [
+            # The database itself refuses two confirmed whole-court bookings that overlap on the
+            # same court. Application checks can race; this cannot. RangeBoundary() makes ranges
+            # half-open [start, end), so 18:00-19:00 and 19:00-20:00 do not clash.
+            ExclusionConstraint(
+                name="no_overlapping_court_bookings",
+                expressions=[
+                    (TsTzRange("start", "end", RangeBoundary()), RangeOperators.OVERLAPS),
+                    ("court", RangeOperators.EQUAL),
+                ],
+                condition=Q(status="confirmed", kind="exclusive"),
+            ),
+            models.CheckConstraint(
+                name="whole_court_booking_is_one_hour",
+                condition=~Q(kind="exclusive") | Q(end=F("start") + timedelta(hours=1)),
+            ),
+        ]
 
     def __str__(self):
         return f"{self.court} {self.start:%d %b %H:%M}"
