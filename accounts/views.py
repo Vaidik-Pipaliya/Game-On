@@ -69,6 +69,6 @@ def audit_log(request):
         rows = rows.filter(action__startswith=prefix)
     return render(request, "accounts/audit_log.html", {
         "rows": rows[:200], "prefix": prefix,
-        "groups": [("", "All"), ("booking", "Bookings"), ("order", "Shop orders"), ("stock", "Stock"), ("tab", "Bar tabs"),
+        "groups": [("", "All"), ("booking", "Bookings"), ("order", "Shop orders"), ("stock", "Stock"), ("tab", "Bar tabs"), ("menu", "Cafe menu"),
                    ("payroll", "Payroll"), ("leave", "Leave"), ("invoice", "Invoices"), ("user", "Roles")],
     })

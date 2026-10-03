@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Cafe menu | Champions Club{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">restaurant_menu</span>Bar and cafe</div><h1 class="page-title">Menu</h1>
+    <p class="page-sub">Change prices, add items, and mark things sold out. Orders already on a tab keep the price they were ordered at.</p></div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    {% if sold_out %}<span class="chip chip-ball">{{ sold_out }} sold out</span>{% endif %}
+    <a class="btn btn-outline-primary" href="{% url 'cafe' %}"><span class="msym">visibility</span>Public menu</a>
+    <a class="btn btn-primary" href="{% url 'bar_menu_new' %}"><span class="msym">add</span>Add item</a>
+  </div>
+</div>
+{% for category, items in menu %}
+<h2 class="panel-title mb-2 mt-3">{{ category }}</h2>
+<div class="panel mb-3">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" style="table-layout:fixed;min-width:640px">
+      <thead><tr><th style="width:34%">Item</th><th style="width:14%">Made at</th><th class="text-end" style="width:12%">Price</th><th style="width:14%">Status</th><th class="text-end" style="width:26%"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>
+      {% for item in items %}
+        <tr class="{% if not item.is_available %}text-muted{% endif %}">
+          <td><strong>{{ item.name }}</strong></td>
+          <td>{{ item.get_station_display|capfirst }}</td>
+          <td class="text-end">{{ item.price_paise|rupees }}</td>
+          <td>{% if item.is_available %}<span class="badge bg-success">Available</span>{% else %}<span class="chip chip-ball">Sold out</span>{% endif %}</td>
+          <td class="text-end">
+            <div class="d-inline-flex gap-1">
+              <form method="post" action="{% url 'bar_menu_toggle' item.pk %}">{% csrf_token %}
+                <button class="btn btn-sm {% if item.is_available %}btn-outline-secondary{% else %}btn-outline-success{% endif %}">{% if item.is_available %}Mark sold out{% else %}Back on{% endif %}</button>
+              </form>
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'bar_menu_edit' item.pk %}">Edit</a>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% empty %}
+<div class="panel panel-pad text-center py-5">
+  <div class="icon-badge mx-auto mb-3"><span class="msym">restaurant_menu</span></div>
+  <h2 class="h4">No menu items yet</h2>
+  <a class="btn btn-primary mt-2" href="{% url 'bar_menu_new' %}">Add the first item</a>
+</div>
+{% endfor %}
+{% endblock %}

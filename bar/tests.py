@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.models import User
+from accounts.models import AuditLog, User
 from courts.tests import Fixtures
 from finance.models import Ledger
 
@@ -194,3 +194,56 @@ class BarScreenTests(BarFixtures, TestCase):
         self.client.post(reverse("bar_shift"), {"cash": "1000"})
         self.assertTrue(Shift.objects.filter(ended_at__isnull=True).exists())
         self.assertEqual(self.client.get(reverse("bar_day_report")).status_code, 200)
+
+
+class MenuTests(BarFixtures, TestCase):
+    def setUp(self):
+        self.make_bar()
+        self.staff = User.objects.create(username="b", email="b@example.com", role="bar_staff")
+        self.client.force_login(self.staff)
+
+    def test_staff_add_an_item_with_a_rupee_price(self):
+        response = self.client.post(reverse("bar_menu_new"), {
+            "name": "Cold Coffee", "category": "Coffee", "price_rupees": "149.50", "station": "bar", "is_available": "on",
+        })
+        self.assertRedirects(response, reverse("bar_menu"))
+        item = MenuItem.objects.get(name="Cold Coffee")
+        self.assertEqual(item.price_paise, 14950)
+        self.assertTrue(AuditLog.objects.filter(action="menu.add", target_id=item.pk).exists())
+
+    def test_duplicate_name_is_refused(self):
+        response = self.client.post(reverse("bar_menu_new"), {
+            "name": "beer", "category": "Drinks", "price_rupees": "200", "station": "bar",
+        })
+        self.assertContains(response, "already a menu item with this name")
+
+    def test_price_change_is_audited_and_open_tabs_keep_their_price(self):
+        tab = open_tab(table=self.t1)
+        add_item(tab, self.beer)
+        self.client.post(reverse("bar_menu_edit", args=[self.beer.pk]), {
+            "name": "Beer", "category": "Drinks", "price_rupees": "300", "station": "bar", "is_available": "on",
+        })
+        self.beer.refresh_from_db()
+        self.assertEqual(self.beer.price_paise, 30000)
+        self.assertEqual(bill_for(tab).subtotal_paise, 25000)  # ordered before the change
+        log = AuditLog.objects.get(action="menu.price")
+        self.assertEqual((log.details["before"], log.details["after"]), (25000, 30000))
+
+    def test_sold_out_item_leaves_the_tab_screen_but_shows_publicly_as_sold_out(self):
+        self.client.post(reverse("bar_menu_toggle", args=[self.burger.pk]))
+        self.burger.refresh_from_db()
+        self.assertFalse(self.burger.is_available)
+        tab = open_tab(table=self.t1)
+        page = self.client.get(reverse("bar_tab", args=[tab.pk]))
+        self.assertNotContains(page, f'name="item" value="{self.burger.pk}"')
+        self.assertContains(page, f'name="item" value="{self.beer.pk}"')
+        self.client.logout()
+        public = self.client.get(reverse("cafe"))
+        self.assertContains(public, "Burger")
+        self.assertContains(public, "Sold out today")
+        self.assertContains(public, "Gold 10%")
+
+    def test_front_desk_cannot_edit_the_menu(self):
+        self.client.force_login(User.objects.create(username="d", email="d@example.com", role="front_desk"))
+        self.assertEqual(self.client.get(reverse("bar_menu")).status_code, 403)
+        self.assertEqual(self.client.post(reverse("bar_menu_toggle", args=[self.beer.pk])).status_code, 403)

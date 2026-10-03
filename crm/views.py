@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from itertools import groupby
 
 from django.conf import settings
 from django.contrib import messages
@@ -9,6 +10,7 @@ from django.views.decorators.http import require_safe
 from django.utils import timezone
 
 from accounts.permissions import role_required
+from bar.models import MenuItem
 from courts.models import Court
 from courts.services import grid_for_day
 from members.models import Plan
@@ -39,6 +41,16 @@ def home(request):
 def plans(request):
     courts = Court.objects.filter(is_active=True).select_related("sport").order_by("sport__name", "name")
     return render(request, "crm/plans.html", {"plans": Plan.objects.order_by("-price_paise"), "courts": courts})
+
+
+
+@require_safe
+def cafe(request):
+    items = MenuItem.objects.order_by("category", "name")
+    return render(request, "crm/cafe.html", {
+        "menu": [(category, list(group)) for category, group in groupby(items, key=lambda m: m.category)],
+        "discounts": Plan.objects.filter(bar_discount_pct__gt=0).order_by("-bar_discount_pct"),
+    })
 
 
 def _public_week(days):

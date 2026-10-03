@@ -33,6 +33,7 @@
     <div class="side-label">Bar &amp; kitchen</div>
     <a class="side-link {% if n == 'bar_tables' or n == 'bar_tab' %}active{% endif %}" href="{% url 'bar_tables' %}"><span class="msym">table_restaurant</span>Tables &amp; tabs</a>
     <a class="side-link {% if n == 'bar_kitchen' %}active{% endif %}" href="{% url 'bar_kitchen' %}"><span class="msym">skillet</span>Kitchen screen</a>
+    <a class="side-link {% if n == 'bar_menu' or n == 'bar_menu_new' or n == 'bar_menu_edit' %}active{% endif %}" href="{% url 'bar_menu' %}"><span class="msym">restaurant_menu</span>Menu</a>
     <a class="side-link {% if n == 'bar_shift' %}active{% endif %}" href="{% url 'bar_shift' %}"><span class="msym">payments</span>My shift</a>
     <a class="side-link {% if n == 'bar_day_report' %}active{% endif %}" href="{% url 'bar_day_report' %}"><span class="msym">summarize</span>Day report</a>
     {% endif %}

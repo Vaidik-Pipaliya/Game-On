@@ -12,10 +12,11 @@ from accounts.templatetags.money import rupees
 from finance.services import DESK_METHODS
 from members.services import find_member_by_phone
 
+from .forms import MenuItemForm
 from .models import MenuItem, Shift, Tab, TabLine, Table
 from .services import (
     add_item, attach_member, bill_for, day_report, end_shift, kitchen_tickets, mark_line_ready, open_tab,
-    settle_tab, shift_summary, start_shift, void_empty_tab,
+    save_menu_item, set_available, settle_tab, shift_summary, start_shift, void_empty_tab,
 )
 
 bar_staff = role_required("owner", "bar_staff")
@@ -143,3 +144,33 @@ def report(request):
     except ValueError:
         day = timezone.localdate()
     return render(request, "bar/day_report.html", {"day": day, "report": day_report(day)})
+
+
+@bar_staff
+def menu(request):
+    items = MenuItem.objects.order_by("category", "name")
+    return render(request, "bar/menu.html", {
+        "menu": [(category, list(group)) for category, group in groupby(items, key=lambda m: m.category)],
+        "sold_out": sum(1 for item in items if not item.is_available),
+    })
+
+
+@bar_staff
+def menu_edit(request, pk=None):
+    item = get_object_or_404(MenuItem, pk=pk) if pk else MenuItem()
+    form = MenuItemForm(request.POST or None, instance=item)
+    if request.method == "POST" and form.is_valid():
+        item = save_menu_item(form.save(), by=request.user)
+        messages.success(request, f"{item.name} saved.")
+        return redirect("bar_menu")
+    categories = MenuItem.objects.order_by("category").values_list("category", flat=True).distinct()
+    return render(request, "bar/menu_edit.html", {"form": form, "item": item, "categories": categories})
+
+
+@bar_staff
+@require_POST
+def menu_toggle(request, pk):
+    item = get_object_or_404(MenuItem, pk=pk)
+    set_available(item, not item.is_available)
+    messages.success(request, f"{item.name} is {'sold out' if item.is_available else 'available again'}.")
+    return redirect("bar_menu")

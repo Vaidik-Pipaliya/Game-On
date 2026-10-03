@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Cafe and bar menu | Champions Club{% endblock %}
+{% block description %}The Champions Club cafe and bar: coffee, snacks and drinks after your match, with member discounts.{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="eyebrow mb-1"><span class="msym">local_cafe</span>Cafe and bar</div>
+    <h1 class="page-title">Menu</h1>
+    <p class="page-sub">Order at the counter or from your table. Prices include taxes.</p>
+  </div>
+</div>
+
+{% if discounts %}
+<div class="callout callout-info mb-4">
+  <span><span class="msym">workspace_premium</span> <strong>Members save on every order:</strong>
+    {% for plan in discounts %}{{ plan.name }} {{ plan.bar_discount_pct }}%{% if not forloop.last %} &middot; {% endif %}{% endfor %}.
+    The discount is taken off the bill automatically when staff add you to the tab.</span>
+  <a class="btn btn-sm btn-outline-primary" href="{% url 'plans' %}">See plans</a>
+</div>
+{% endif %}
+
+<div class="row g-4">
+  {% for category, items in menu %}
+  <div class="col-md-6 col-xl-4">
+    <div class="panel panel-pad h-100">
+      <h2 class="panel-title mb-3">{{ category }}</h2>
+      <ul class="list-unstyled mb-0">
+        {% for item in items %}
+        <li class="d-flex justify-content-between align-items-baseline gap-3 py-2 {% if not forloop.last %}border-bottom{% endif %} {% if not item.is_available %}text-muted{% endif %}">
+          <span>{{ item.name }}{% if not item.is_available %} <span class="chip chip-neutral">Sold out today</span>{% endif %}</span>
+          <strong class="text-nowrap">{{ item.price_paise|rupees }}</strong>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12"><div class="panel panel-pad text-center text-muted">The menu is being updated. Please ask at the counter.</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

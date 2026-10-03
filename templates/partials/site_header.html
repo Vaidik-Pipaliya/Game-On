@@ -10,10 +10,11 @@
     </button>
     <div class="collapse site-collapse" id="siteCollapse">
       <nav class="site-nav" aria-label="Main">
-        <a href="{% url 'plans' %}" {% if n == 'plans' %}class="active" aria-current="page"{% endif %}>Plans &amp; prices</a>
-        <a href="{% url 'availability' %}" {% if n == 'availability' %}class="active" aria-current="page"{% endif %}>Free courts</a>
+        <a href="{% url 'plans' %}" {% if n == 'plans' %}class="active" aria-current="page"{% endif %}>Plans</a>
+        {% if not user.is_authenticated %}<a href="{% url 'availability' %}" {% if n == 'availability' %}class="active" aria-current="page"{% endif %}>Free courts</a>{% endif %}{# members use Book a court #}
         {% if not user.member %}<a href="{% url 'trial' %}" {% if n == 'trial' %}class="active" aria-current="page"{% endif %}>Book a trial</a>{% endif %}
         <a href="{% url 'shop_catalog' %}" {% if n == 'shop_catalog' or n == 'shop_cart' or n == 'shop_checkout' %}class="active" aria-current="page"{% endif %}>Gear shop</a>
+        <a href="{% url 'cafe' %}" {% if n == 'cafe' %}class="active" aria-current="page"{% endif %}>Cafe</a>
         <a href="{% url 'enquiry' %}" {% if n == 'enquiry' %}class="active" aria-current="page"{% endif %}>Contact</a>
         {% if user.is_authenticated %}
           <a href="{% url 'portal_grid' %}" {% if n == 'portal_grid' or n == 'portal_confirm' %}class="active" aria-current="page"{% endif %}><span class="msym">calendar_month</span>Book a court</a>
@@ -23,7 +24,7 @@
       </nav>
       <div class="header-user">
         {% if user.is_authenticated %}
-          {% if is_staff_user %}<a class="btn btn-outline-primary btn-sm" href="{% url 'desk' %}"><span class="msym">admin_panel_settings</span>Staff desk</a>{% endif %}
+          {% if is_staff_user %}<a class="btn btn-outline-primary btn-sm" href="{% url 'desk' %}"><span class="msym">admin_panel_settings</span><span class="btn-label">Staff desk</span></a>{% endif %}
           <div class="user-chip">
             {{ user.first_name|default:user.email }}
             <small>{% with m=user.member.current_membership %}{% if m %}{{ m.plan.name }} member{% else %}{{ user.get_role_display|default:user.role }}{% endif %}{% endwith %}</small>

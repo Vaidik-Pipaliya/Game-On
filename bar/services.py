@@ -14,7 +14,7 @@ from finance.models import Ledger, Method, Source
 from finance.services import DESK_METHODS, record_payment
 from members.pricing import price_for
 
-from .models import Shift, Tab, TabLine
+from .models import MenuItem, Shift, Tab, TabLine
 
 Bill = namedtuple("Bill", "subtotal_paise discount_paise discount_label total_paise")
 ShiftSummary = namedtuple("ShiftSummary", "shift cash_sales_paise expected_cash_paise difference_paise sales_paise")
@@ -105,6 +105,30 @@ def void_empty_tab(tab, by=None):
         tab.save(update_fields=["status", "closed_at"])
         audit(by, "tab.void", tab, f"Voided empty tab #{tab.pk} ({tab.who})")
     return tab
+
+
+def save_menu_item(item, by=None):
+    """Add or edit a menu item. Price changes go in the audit log.
+
+    Lines already on a tab keep the price they were ordered at (TabLine.unit_price_paise), so a price
+    change never alters an open bill.
+    """
+    with transaction.atomic():
+        before = None
+        if item.pk:
+            before = MenuItem.objects.select_for_update().values_list("price_paise", flat=True).get(pk=item.pk)
+        item.save()
+        if before is None:
+            audit(by, "menu.add", item, f"Added {item.name} at {rupees(item.price_paise)}")
+        elif before != item.price_paise:
+            audit(by, "menu.price", item, f"{item.name}: {rupees(before)} -> {rupees(item.price_paise)}",
+                  before=before, after=item.price_paise)
+    return item
+
+
+def set_available(item, available):
+    """Mark an item sold out (or back on). Sold-out items disappear from the tab screen and show as sold out online."""
+    MenuItem.objects.filter(pk=item.pk).update(is_available=available)
 
 
 def kitchen_tickets(station):
