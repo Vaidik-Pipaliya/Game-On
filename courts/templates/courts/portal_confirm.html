@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Confirm your booking | Champions Club{% endblock %}
+{% block content %}
+<div class="col-lg-5 mx-auto">
+  <h1 class="h3 mb-3">Confirm your booking</h1>
+  {% if error %}<div class="alert alert-danger" role="alert" aria-live="polite">{{ error }} <a href="{% url 'portal_grid' %}">Pick another time</a>.</div>{% endif %}
+  <div class="bg-white border rounded p-3 mb-3">
+    <div class="h5 mb-1">{{ court.name }} <span class="text-muted">&middot; {{ court.sport.name }}</span></div>
+    <div>{{ start|date:"l j F" }}, {{ start|date:"g:i A" }} to {{ start|date:"g:i A" }}<span class="text-muted"> (one hour)</span></div>
+    <hr>
+    <div class="d-flex justify-content-between align-items-baseline">
+      <span>Your price</span>
+      <span class="fs-4 fw-bold">{% if price.kind == "free" %}Free{% else %}{{ price.amount_paise|rupees }}{% endif %}</span>
+    </div>
+    <div class="small text-muted">
+      {% if price.kind == "free" %}Uses one of your free hours this month.
+      {% elif price.kind == "member" and price.discount_pct %}Includes your {{ price.discount_pct }}% member discount.
+      {% else %}Standard price.{% endif %}
+    </div>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="court" value="{{ court.pk }}">
+    <input type="hidden" name="start" value="{{ raw_start }}">
+    {% if price.amount_paise %}
+      <button name="payment" value="online" class="btn btn-primary btn-lg w-100 mb-2">Pay {{ price.amount_paise|rupees }} online now</button>
+      <div class="small text-muted mb-3">We hold your slot for {{ hold_minutes }} minutes while you pay.</div>
+      <button name="payment" value="club" class="btn btn-outline-primary w-100">Book now, pay at the club</button>
+    {% else %}
+      <button name="payment" value="club" class="btn btn-primary btn-lg w-100">Confirm free session</button>
+    {% endif %}
+    <a href="{% url 'portal_grid' %}" class="btn btn-link w-100 mt-2">Back to the grid</a>
+  </form>
+</div>
+{% endblock %}

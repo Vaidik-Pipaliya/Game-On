@@ -22,6 +22,7 @@ SESSION = timedelta(hours=1)
 OPEN_HOUR, CLOSE_HOUR = 6, 22  # club-local opening hours (assumed; a setting later)
 DEFAULT_DAILY_LIMIT = 2  # for members whose plan limit no longer applies (expired)
 CANCEL_WINDOW = timedelta(hours=24)  # full refund if cancelled at least this long before the session
+HOLD_FOR = timedelta(minutes=5)  # how long a slot is reserved while an online payment completes
 FRIDAY = 4
 OVERLAP_CONSTRAINT = "no_overlapping_court_bookings"
 
@@ -103,15 +104,34 @@ def take_booking_payment(booking, payment_method):
     return booking
 
 
+def court_price(court, member, day):
+    """What this member (or walk-in, when member is None) pays for a session on `day`, as a Price."""
+    membership = member.current_membership if member is not None else None
+    free_left = _free_hours_left(member, membership, day) if member is not None else 0
+    return price_for("court", court.walk_in_rate_paise, membership, free_hours_left=free_left, today=day)
+
+
+def release_expired_holds(now=None):
+    """Free slots whose 5-minute hold ran out. Runs whenever availability or a booking is looked at,
+    so an expired hold never blocks anyone, and a cron job isn't needed for correctness."""
+    now = now or timezone.now()
+    return Booking.objects.filter(status=Booking.Status.HELD, hold_expires_at__lte=now).update(
+        status=Booking.Status.CANCELLED
+    )
+
+
 def book_court(*, court, start, member=None, guest_name="", guest_phone="", payment_method=None,
-               created_by=None, now=None):
-    """Book one 60-minute session. Returns the confirmed Booking or raises a ValidationError subclass.
+               hold=False, created_by=None, now=None):
+    """Book one 60-minute session. Returns the Booking or raises a ValidationError subclass.
 
     payment_method: cash/card/upi records the payment now; "online" leaves it unpaid until
     Razorpay confirms; None means pay later.
+    hold=True reserves the slot for 5 minutes (status "held") while an online payment completes;
+    it becomes confirmed when the payment arrives (apply_online_payment) or is released if it doesn't.
     """
     now = now or timezone.now()
     validate_slot_start(start, now)
+    release_expired_holds(now)
     if not court.is_active:
         raise ValidationError(f"{court.name} is not open for booking.")
     _require_who(member, guest_name, guest_phone)
@@ -124,17 +144,19 @@ def book_court(*, court, start, member=None, guest_name="", guest_phone="", paym
             # Lock this member's row: a second request for the same member waits here until the
             # first commits, so both cannot read "1 booking today" and both succeed.
             member = Member.objects.select_for_update().get(pk=member.pk)
-            membership = member.current_membership
-            _enforce_daily_limit(member, membership, day)
-            price_paise = price_for(
-                "court", court.walk_in_rate_paise, membership,
-                free_hours_left=_free_hours_left(member, membership, day), today=day,
-            ).amount_paise
+            _enforce_daily_limit(member, member.current_membership, day)
+            price_paise = court_price(court, member, day).amount_paise
         # An overlapping insert raises IntegrityError from the exclusion constraint.
+        held = hold and price_paise > 0  # a free session needs no payment, so it is confirmed at once
         booking = Booking.objects.create(
             court=court, member=member, guest_name=guest_name.strip(), guest_phone=guest_phone.strip(),
             start=start, end=start + SESSION, price_paise=price_paise, created_by=created_by,
+            status=Booking.Status.HELD if held else Booking.Status.CONFIRMED,
+            hold_expires_at=now + HOLD_FOR if held else None,
+            payment_method=Method.ONLINE if held else "",
         )
+        if held:
+            return booking  # confirmed (and the message sent) when the payment arrives
         _apply_payment(booking, payment_method)
         notify_booking_after_commit(booking, "booking_confirmed")
         return booking
@@ -144,9 +166,10 @@ def _enforce_daily_limit(member, membership, day):
     on_plan = membership is not None and membership.status_on(day) in ("active", "expiring")
     limit = membership.plan.daily_booking_limit if on_plan else DEFAULT_DAILY_LIMIT
     day_start, day_end = local_day_bounds(day)
-    # Only confirmed bookings count (whole-court and social seats), so a cancelled one gives the quota back.
+    # Held and confirmed bookings count (whole-court and social seats); a cancelled one gives the quota back.
     booked = Booking.objects.filter(
-        member=member, status=Booking.Status.CONFIRMED, start__gte=day_start, start__lt=day_end
+        member=member, status__in=[Booking.Status.HELD, Booking.Status.CONFIRMED],
+        start__gte=day_start, start__lt=day_end,
     ).count()
     if booked >= limit:
         raise DailyLimitReached(f"{member.full_name} has reached the limit of {limit} bookings on {day:%d %b}.")
@@ -263,6 +286,7 @@ def grid_for_day(day, sport=None, now=None):
     "social" (a social session overlaps it) or "past".
     """
     now = now or timezone.now()
+    release_expired_holds(now)
     tz = timezone.get_current_timezone()
     first = datetime.combine(day, time(OPEN_HOUR), tzinfo=tz)
     starts = [first + timedelta(minutes=30 * i) for i in range((CLOSE_HOUR - OPEN_HOUR) * 2 - 1)]
@@ -272,7 +296,7 @@ def grid_for_day(day, sport=None, now=None):
         courts = courts.filter(sport=sport)
     day_start, day_end = local_day_bounds(day)
     bookings = Booking.objects.filter(
-        court__in=courts, kind=Booking.Kind.EXCLUSIVE, status=Booking.Status.CONFIRMED,
+        court__in=courts, kind=Booking.Kind.EXCLUSIVE, status__in=[Booking.Status.HELD, Booking.Status.CONFIRMED],
         start__lt=day_end, end__gt=day_start,
     ).select_related("member")
 
@@ -300,3 +324,59 @@ def day_bookings(day):
         .select_related("court", "member")
         .order_by("start", "court__name")
     )
+
+
+def release_hold(booking):
+    """The member backed out of paying: free the slot straight away instead of waiting out the 5 minutes."""
+    return bool(Booking.objects.filter(pk=booking.pk, status=Booking.Status.HELD).update(status=Booking.Status.CANCELLED))
+
+
+def apply_online_payment(booking_id, payment):
+    """Razorpay confirmed a payment for this booking (finance has already recorded the ledger row).
+
+    - held        -> confirmed and paid
+    - confirmed   -> marked paid (staff-created online booking)
+    - cancelled   -> the hold had expired: confirm it again if nobody took the slot, otherwise refund
+    - already paid-> a second payment for the same booking: refund it
+    Returns "confirmed", "paid", "refunded" so callers and tests can see what happened.
+    """
+    with transaction.atomic():
+        booking = Booking.objects.select_for_update().select_related("court").get(pk=booking_id)
+
+        if booking.is_paid:
+            return _refund_online(booking, payment, "Duplicate payment for an already paid booking")
+
+        already_confirmed = booking.status == Booking.Status.CONFIRMED  # staff booked it; the customer just paid
+        if booking.status == Booking.Status.CANCELLED:
+            try:
+                with transaction.atomic():  # savepoint: a clash must not poison the outer transaction
+                    booking.status = Booking.Status.CONFIRMED
+                    booking.save(update_fields=["status"])
+            except IntegrityError as error:
+                if OVERLAP_CONSTRAINT not in str(error):
+                    raise
+                booking.status = Booking.Status.CANCELLED
+                return _refund_online(booking, payment, "Slot was taken before the payment arrived")
+        elif booking.status == Booking.Status.HELD:
+            booking.status = Booking.Status.CONFIRMED
+
+        booking.is_paid = True
+        booking.payment_method = Method.ONLINE
+        booking.hold_expires_at = None
+        booking.save(update_fields=["status", "is_paid", "payment_method", "hold_expires_at"])
+        if already_confirmed:
+            return "paid"  # the confirmation message was sent when staff made the booking
+        notify_booking_after_commit(booking, "booking_confirmed")
+        return "confirmed"
+
+
+def _refund_online(booking, payment, reason):
+    """Money arrived but the booking can't be honoured: reverse it in the ledger and log why.
+
+    The money itself is returned from the Razorpay dashboard (limitation: no refund API call yet)."""
+    record_refund(
+        source=Source.COURT, method=Method.ONLINE, amount_paise=payment.amount_paise, reference_id=booking.pk,
+        note=f"{reason}. Refund via the Razorpay dashboard.",
+    )
+    audit(None, "booking.payment_refunded", booking, f"{reason}: booking #{booking.pk}", amount_paise=payment.amount_paise)
+    return "refunded"

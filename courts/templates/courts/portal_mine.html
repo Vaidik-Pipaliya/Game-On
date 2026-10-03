@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}My bookings | Champions Club{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">My bookings</h1>
+  <a href="{% url 'portal_grid' %}" class="btn btn-primary">Book a court</a>
+</div>
+
+<h2 class="h5">Coming up</h2>
+{% for b in upcoming %}
+<div class="bg-white border rounded p-3 mb-2">
+  <div class="d-flex flex-wrap justify-content-between gap-2">
+    <div>
+      <strong>{{ b.court.name }}</strong> &middot; {{ b.start|date:"D j M, g:i A" }}
+      <div class="small">
+        {% if b.price_paise %}{{ b.price_paise|rupees }}{% else %}Free{% endif %} &middot;
+        {% if b.status == "held" %}<span class="badge bg-warning text-dark">Held until {{ b.hold_expires_at|date:"g:i A" }}: pay to confirm</span>
+        {% elif b.is_paid %}<span class="badge bg-success">Paid</span>
+        {% else %}<span class="badge bg-secondary">Pay at the club</span>{% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-2 align-items-start">
+      {% if not b.is_paid and b.price_paise %}
+        <form method="post" action="{% url 'portal_pay' b.pk %}">{% csrf_token %}<button class="btn btn-sm btn-primary">Pay online</button></form>
+      {% endif %}
+      <form method="post" action="{% url 'portal_cancel' b.pk %}" onsubmit="return confirm('{% if b.status == 'held' %}Release this held slot?{% else %}Cancel this booking?{% endif %}');">{% csrf_token %}
+        <button class="btn btn-sm btn-outline-danger">{% if b.status == "held" %}Release{% else %}Cancel{% endif %}</button>
+      </form>
+    </div>
+  </div>
+  {% if b.status == "confirmed" and b.is_paid and b.price_paise %}<div class="small text-muted mt-1">Cancel at least 24 hours before to get a full refund.</div>{% endif %}
+</div>
+{% empty %}
+<p class="text-muted">Nothing booked yet. <a href="{% url 'portal_grid' %}">Pick a court and time.</a></p>
+{% endfor %}
+
+{% if past %}
+<h2 class="h5 mt-4">Earlier</h2>
+<ul class="list-unstyled small">
+  {% for b in past %}<li class="py-1 border-bottom">{{ b.start|date:"j M Y, g:i A" }} &middot; {{ b.court.name }} &middot; {{ b.get_status_display }}</li>{% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

@@ -36,11 +36,15 @@ def _payment_for(request, pk):
         return payment
     if payment.source == Source.SHOP and Order.objects.filter(pk=payment.reference_id, placed_by=request.user).exists():
         return payment
+    if payment.source == Source.COURT and Booking.objects.filter(pk=payment.reference_id, member__user=request.user).exists():
+        return payment  # a member paying for their own court booking
     raise PermissionDenied
 
 
 def _after_payment_url(request, payment):
     if payment.source == Source.COURT:
+        if not _is_staff(request.user):
+            return "/book/mine/"
         booking = Booking.objects.filter(pk=payment.reference_id).first()
         if booking:
             return f"/desk/book/?date={timezone.localtime(booking.start).date().isoformat()}"

@@ -26,6 +26,8 @@
       </ul>
       <div class="d-flex flex-wrap align-items-center gap-2 text-white">
         {% if user.is_authenticated %}
+          <a class="nav-link text-white" href="{% url 'portal_grid' %}">Book a court</a>
+          <a class="nav-link text-white" href="{% url 'portal_mine' %}">My bookings</a>
           <a class="nav-link text-white" href="{% url 'shop_my_orders' %}">My orders</a>
           {% if user.is_superuser or user.role != "member" %}<a class="nav-link text-white" href="{% url 'desk' %}">Staff desk</a>{% endif %}
           <span class="small">{{ user.email }} ({{ user.role }})</span>

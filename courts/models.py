@@ -50,6 +50,7 @@ class SocialSession(models.Model):
 
 class Booking(models.Model):
     class Status(models.TextChoices):
+        HELD = "held"  # reserved for a few minutes while an online payment completes
         CONFIRMED = "confirmed"
         CANCELLED = "cancelled"
         COMPLETED = "completed"
@@ -73,6 +74,7 @@ class Booking(models.Model):
     price_paise = models.PositiveIntegerField(default=0)
     # "" until paid; then cash / card / upi / online. Free sessions are marked paid with no method.
     payment_method = models.CharField(max_length=10, blank=True)
+    hold_expires_at = models.DateTimeField(null=True, blank=True, help_text="Only for status 'held'")
     is_paid = models.BooleanField(default=False)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -88,7 +90,8 @@ class Booking(models.Model):
                     (TsTzRange("start", "end", RangeBoundary()), RangeOperators.OVERLAPS),
                     ("court", RangeOperators.EQUAL),
                 ],
-                condition=Q(status="confirmed", kind="exclusive"),
+                # A held slot blocks other bookings just like a confirmed one.
+                condition=Q(status__in=["held", "confirmed"], kind="exclusive"),
             ),
             models.CheckConstraint(
                 name="whole_court_booking_is_one_hour",

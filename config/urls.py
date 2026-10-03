@@ -9,6 +9,7 @@ urlpatterns = [
     path("desk/members/", include("members.urls")),
     path("desk/messages/", include("notifications.urls")),
     path("desk/", include("courts.urls")),
+    path("book/", include("courts.portal_urls")),
     path("bar/", include("bar.urls")),
     path("", include("shop.urls")),
     path("", include("finance.urls")),

@@ -51,6 +51,13 @@ class EveryPageTests(TestCase):
             reverse("payroll") + f"?month={month}", reverse("leave_approvals"), reverse("my_leave"),
         ])
 
+    def test_member_portal_pages(self):
+        member = Member.objects.exclude(memberships=None).first()
+        member.user = self.owner
+        member.save()
+        self.client.force_login(self.owner)
+        self.assertPages([reverse("portal_grid"), reverse("portal_mine"), reverse("audit_log")])
+
     def test_lead_detail_and_django_admin(self):
         from crm.models import Lead
         self.client.force_login(self.owner)
