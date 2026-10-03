@@ -7,6 +7,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.utils import timezone
 
+from accounts.templatetags.money import rupees
 from config.clock import local_day_bounds
 from finance.models import Ledger, Method, Source
 from finance.services import DESK_METHODS, record_payment
@@ -81,7 +82,7 @@ def settle_tab(tab, payments):
                 raise ValidationError("Each payment needs cash, card or UPI and a positive amount.")
         paid = sum(amount for _, amount in payments)
         if paid != bill.total_paise:
-            raise ValidationError(f"Payments add up to ₹{paid / 100:,.2f} but the bill is ₹{bill.total_paise / 100:,.2f}.")
+            raise ValidationError(f"Payments add up to {rupees(paid)} but the bill is {rupees(bill.total_paise)}.")
         for method, amount in payments:
             record_payment(source=Source.BAR, method=method, amount_paise=amount, reference_id=tab.pk, note=f"Bar tab #{tab.pk}")
         tab.status = Tab.Status.PAID

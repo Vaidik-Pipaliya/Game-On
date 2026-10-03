@@ -9,6 +9,7 @@ from members.models import Member
 
 from .models import User
 from .services import InvalidToken, get_or_create_user
+from .templatetags.money import rupees, rupees_input
 
 GOOGLE_CLAIMS = {"email": "Asha@Example.com", "email_verified": True, "name": "Asha Rao"}
 
@@ -84,3 +85,12 @@ class RolePermissionTests(TestCase):
             with self.subTest(role=role):
                 self.login_as(role)
                 self.assertEqual(self.client.get(reverse("desk")).status_code, 200)
+
+
+class MoneyFormatTests(TestCase):
+    def test_indian_digit_grouping(self):
+        self.assertEqual(
+            [rupees(p) for p in (0, 5000, 120000, 12500000, 1234567850, -2640000, 99)],
+            ["₹0", "₹50", "₹1,200", "₹1,25,000", "₹1,23,45,678.50", "-₹26,400", "₹0.99"],
+        )
+        self.assertEqual(rupees_input(135050), "1350.50")

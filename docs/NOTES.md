@@ -114,3 +114,7 @@
 - **Payroll:** `run_payroll(month)` creates one row per employee (gross = monthly salary, flat 12% deduction, net). `(employee, month)` is unique, so running twice never double-pays. Paying a salary writes an **expense** row (negative) - it reduces cash but never revenue; the dashboard shows expenses separately. No PF/ESI/TDS (out of scope per PRD).
 - **Leave:** 12 days a year; requests can't overlap pending/approved leave or exceed the balance; the owner approves or rejects, and approval **re-checks the balance** (another request may have been approved in between). Staff request leave at `/staff/leave/` once their login is linked to an Employee in admin.
 - Owner pages share one sub-navigation: Dashboard, Invoices, GST summary, Payroll, Leave approvals.
+
+## M14 - Demo data, docs, deploy prep
+- `python manage.py seed_demo` now also creates 30 days of activity (`members/demo_activity.py`): ~850 court bookings weighted to morning/evening peaks, a few cancellations with refunds, shop counter sales, bar tabs with member discounts, new-member fees, last month's payroll (expense), two GST invoices (one paid), upcoming bookings (some unpaid -> "amounts owed"), next Friday's social session, an open tab with kitchen tickets, a pending online order, a pending leave request and an overdue lead. Seeded with `random.Random(42)` so every demo looks the same; guarded by a marker so it runs once. A test checks ledger totals equal what bookings/orders say was paid.
+- Money now displays with Indian digit grouping (₹1,25,000) everywhere via the `rupees` filter.

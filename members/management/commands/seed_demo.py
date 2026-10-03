@@ -3,10 +3,12 @@
 from datetime import date, timedelta
 
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from bar.models import MenuItem, Table
 from courts.models import Court, Sport
 from crm.models import Lead
+from members.demo_activity import already_seeded, seed_activity
 from members.models import Member, Membership, Plan
 from shop.models import Product, Variant
 
@@ -97,10 +99,10 @@ LEADS = [
 
 
 class Command(BaseCommand):
-    help = "Load demo plans, members, courts, shop products, bar menu and leads."
+    help = "Load demo plans, members, courts, shop, bar menu, leads and 30 days of activity."
 
     def handle(self, *args, **options):
-        today = date.today()
+        today = timezone.localdate()
         plans = {}
         for name, fee, court_pct, free_hrs, shop_pct, bar_pct, junior in PLANS:
             plans[name], _ = Plan.objects.update_or_create(
@@ -161,6 +163,11 @@ class Command(BaseCommand):
                 },
             )
 
+        if already_seeded():
+            self.stdout.write("Activity history already present; not adding it again.")
+        else:
+            seed_activity(today)
+            self.stdout.write("Added 30 days of bookings, sales, bar tabs, fees, payroll and invoices.")
         self.stdout.write(self.style.SUCCESS("Demo data loaded."))
 
     def _member(self, name, phone, born_year, guardian=None):
