@@ -12,27 +12,34 @@
       <nav class="site-nav" aria-label="Main">
         <a href="{% url 'plans' %}" {% if n == 'plans' %}class="active" aria-current="page"{% endif %}>Plans</a>
         {% if not user.is_authenticated %}<a href="{% url 'availability' %}" {% if n == 'availability' %}class="active" aria-current="page"{% endif %}>Free courts</a>{% endif %}{# members use Book a court #}
-        {% if not user.member %}<a href="{% url 'trial' %}" {% if n == 'trial' %}class="active" aria-current="page"{% endif %}>Book a trial</a>{% endif %}
+        {% if not user.member and not is_staff_user %}<a href="{% url 'trial' %}" {% if n == 'trial' %}class="active" aria-current="page"{% endif %}>Book a trial</a>{% endif %}
         <a href="{% url 'shop_catalog' %}" {% if n == 'shop_catalog' or n == 'shop_cart' or n == 'shop_checkout' %}class="active" aria-current="page"{% endif %}>Gear shop</a>
         <a href="{% url 'cafe' %}" {% if n == 'cafe' %}class="active" aria-current="page"{% endif %}>Cafe</a>
         <a href="{% url 'enquiry' %}" {% if n == 'enquiry' %}class="active" aria-current="page"{% endif %}>Contact</a>
         {% if user.is_authenticated %}
           <a href="{% url 'portal_grid' %}" {% if n == 'portal_grid' or n == 'portal_confirm' %}class="active" aria-current="page"{% endif %}><span class="msym">calendar_month</span>Book a court</a>
-          <a href="{% url 'portal_mine' %}" {% if n == 'portal_mine' %}class="active" aria-current="page"{% endif %}><span class="msym">receipt_long</span>My bookings</a>
-          <a href="{% url 'shop_my_orders' %}" {% if n == 'shop_my_orders' %}class="active" aria-current="page"{% endif %}><span class="msym">inventory_2</span>My orders</a>
         {% endif %}
       </nav>
       <div class="header-user">
         {% if user.is_authenticated %}
           {% if is_staff_user %}<a class="btn btn-outline-primary btn-sm" href="{% url 'desk' %}"><span class="msym">admin_panel_settings</span><span class="btn-label">Staff desk</span></a>{% endif %}
-          <div class="user-chip">
-            {{ user.first_name|default:user.email }}
-            <small>{% with m=user.member.current_membership %}{% if m %}{{ m.plan.name }} member{% else %}{{ user.get_role_display|default:user.role }}{% endif %}{% endwith %}</small>
+          <div class="dropdown">
+            <button class="account-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Your account">
+              <span class="user-chip">
+                {{ user.first_name|default:user.email }}
+                <small>{% with m=user.member.current_membership %}{% if m %}{{ m.plan.name }} member{% else %}{{ user.get_role_display|default:user.role }}{% endif %}{% endwith %}</small>
+              </span>
+              <span class="avatar" aria-hidden="true">{{ user.first_name|default:user.email|slice:":1"|upper }}</span>
+              <span class="msym" aria-hidden="true">expand_more</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item {% if n == 'portal_mine' %}active{% endif %}" href="{% url 'portal_mine' %}"><span class="msym">receipt_long</span>My bookings</a></li>
+              <li><a class="dropdown-item {% if n == 'shop_my_orders' %}active{% endif %}" href="{% url 'shop_my_orders' %}"><span class="msym">inventory_2</span>My shop orders</a></li>
+              <li><a class="dropdown-item {% if n == 'cafe_my_orders' %}active{% endif %}" href="{% url 'cafe_my_orders' %}"><span class="msym">local_cafe</span>My cafe orders</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="dropdown-item"><span class="msym">logout</span>Log out</button></form></li>
+            </ul>
           </div>
-          <span class="avatar" aria-hidden="true">{{ user.first_name|default:user.email|slice:":1"|upper }}</span>
-          <form method="post" action="{% url 'logout' %}">{% csrf_token %}
-            <button class="btn btn-outline-secondary btn-sm" title="Log out"><span class="msym">logout</span><span class="d-lg-none">Log out</span></button>
-          </form>
         {% else %}
           <a class="btn btn-primary" href="{% url 'login' %}">Log in</a>
         {% endif %}

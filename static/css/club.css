@@ -323,8 +323,7 @@ table.cgrid { border-collapse: separate; border-spacing: 0; font-size: .75rem; w
 @media (min-width: 1100px) {
   .site-nav .msym, .brand-sub { display: none; }
 }
-@media (min-width: 1100px) and (max-width: 1279.98px) {
-  .user-chip, .header-user .btn-label { display: none; }
+@media (min-width: 1100px) and (max-width: 1199.98px) {
   .site-nav a { padding: .4rem .45rem; }
 }
 
@@ -394,3 +393,9 @@ table.cgrid { border-collapse: separate; border-spacing: 0; font-size: .75rem; w
 .search-box .msym { position: absolute; left: .7rem; top: 50%; transform: translateY(-50%); color: var(--ink-600); pointer-events: none; }
 .search-box .form-control { padding-left: 2.3rem; }
 [data-search-group][hidden], .menu-item[hidden], .shop-item[hidden], .tab-item[hidden] { display: none !important; }
+
+/* ---------- Account menu (name + avatar opens My bookings / orders / Log out) ---------- */
+.account-btn { display: flex; align-items: center; gap: .6rem; background: none; border: 0; padding: .25rem .4rem; border-radius: 8px; color: inherit; }
+.account-btn:hover, .account-btn[aria-expanded="true"] { background: var(--court-100); }
+.dropdown-menu .dropdown-item { display: flex; align-items: center; gap: .55rem; padding: .5rem 1rem; }
+.dropdown-menu .dropdown-item.active, .dropdown-menu .dropdown-item:active { background: var(--court-700); color: #fff; }
