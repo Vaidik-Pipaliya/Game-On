@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Thank you | Champions Club{% endblock %}
+{% block content %}
+<div class="col-lg-6 mx-auto text-center py-4">
+  <h1 class="h3">Thank you, we have your request</h1>
+  <p>Someone from the club will call you soon. Questions before then? Call {{ club.phone }}.</p>
+  <a href="{% url 'home' %}" class="btn btn-primary">Back to home</a>
+</div>
+{% endblock %}

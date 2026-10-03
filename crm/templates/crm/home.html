@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ club.name }}: tennis, padel, badminton and cricket courts{% endblock %}
+{% block head %}
+{# Structured data so search engines understand this is a local sports club. #}
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "SportsActivityLocation", "name": "{{ club.name|escapejs }}",
+ "telephone": "{{ club.phone|escapejs }}", "email": "{{ club.email|escapejs }}",
+ "address": "{{ club.address|escapejs }}", "openingHours": "Mo-Su 06:00-22:00"}
+</script>
+{% endblock %}
+{% block content %}
+<div class="row g-4 align-items-start mb-4">
+  <div class="col-lg-5">
+    <h1 class="display-6 fw-bold">{{ club.name }}</h1>
+    <p class="lead">Courts for {{ sports|join:", " }}. Book a session in seconds, pick up gear at our shop, and relax at the cafe after the match.</p>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <a href="{% url 'trial' %}" class="btn btn-primary btn-lg">Book a trial session</a>
+      <a href="{% url 'plans' %}" class="btn btn-outline-primary btn-lg">See plans and prices</a>
+    </div>
+    <ul class="list-unstyled small">
+      <li><strong>Open:</strong> {{ club.hours }}</li>
+      <li><strong>Where:</strong> {{ club.address }}</li>
+      <li><strong>Call:</strong> <a href="tel:{{ club.phone }}">{{ club.phone }}</a> &middot; <a href="mailto:{{ club.email }}">{{ club.email }}</a></li>
+    </ul>
+  </div>
+  <div class="col-lg-7">
+    <h2 class="h5">Free courts today</h2>
+    {% with d=today_grid %}{% include "crm/_week_grid.html" %}{% endwith %}
+    <a href="{% url 'availability' %}">See the whole week &rarr;</a>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-md-4"><div class="bg-white border rounded p-3 h-100"><h2 class="h6">Members save on every visit</h2><p class="small mb-0">Gold, Silver and Junior plans give lower court rates, free hours and shop and cafe discounts, applied automatically.</p></div></div>
+  <div class="col-md-4"><div class="bg-white border rounded p-3 h-100"><h2 class="h6">Friday social play</h2><p class="small mb-0">Turn up on Friday evenings and play with other members. Pay per person, no partner needed.</p></div></div>
+  <div class="col-md-4"><div class="bg-white border rounded p-3 h-100"><h2 class="h6">Gear when you need it</h2><p class="small mb-0">Rackets, balls, shoes and apparel, in the shop or online with pickup or delivery.</p></div></div>
+</div>
+{% endblock %}

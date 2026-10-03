@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Contact us | Champions Club{% endblock %}
+{% block content %}
+<div class="col-lg-6">
+  <h1 class="h3">Ask us anything</h1>
+  <p class="text-muted">Tell us what you'd like to play. Someone from the club will call you back, usually the same day. Or call {{ club.phone }}.</p>
+  {% include "crm/_public_form.html" with submit_label="Send enquiry" %}
+</div>
+{% endblock %}

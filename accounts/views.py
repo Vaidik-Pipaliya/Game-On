@@ -11,10 +11,6 @@ from .permissions import STAFF_ROLES, role_required
 from .services import InvalidToken, get_or_create_user, verify_google_token
 
 
-def home(request):
-    return render(request, "accounts/home.html")
-
-
 def login_page(request):
     firebase_config = {
         "apiKey": settings.FIREBASE_WEB_API_KEY,

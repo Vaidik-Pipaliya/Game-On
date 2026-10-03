@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Plans and prices | Champions Club{% endblock %}
+{% block description %}Compare Gold, Silver and Junior membership plans and court prices for tennis, padel, badminton and cricket nets.{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Plans and prices</h1>
+<div class="table-responsive bg-white border rounded mb-4">
+  <table class="table mb-0 align-middle">
+    <caption class="px-2">All prices include taxes. Discounts apply automatically when you show your phone number.</caption>
+    <thead><tr><th scope="col">Benefit</th>{% for p in plans %}<th scope="col" class="text-center">{{ p.name }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      <tr><th scope="row" class="fw-normal">Membership fee</th>{% for p in plans %}<td class="text-center fw-bold">{{ p.price_paise|rupees }} / {{ p.duration_days }} days</td>{% endfor %}</tr>
+      <tr><th scope="row" class="fw-normal">Court discount</th>{% for p in plans %}<td class="text-center">{{ p.court_discount_pct }}%</td>{% endfor %}</tr>
+      <tr><th scope="row" class="fw-normal">Free court hours a month</th>{% for p in plans %}<td class="text-center">{{ p.free_court_hours_per_month|default:"-" }}</td>{% endfor %}</tr>
+      <tr><th scope="row" class="fw-normal">Shop discount</th>{% for p in plans %}<td class="text-center">{{ p.shop_discount_pct }}%</td>{% endfor %}</tr>
+      <tr><th scope="row" class="fw-normal">Cafe and bar discount</th>{% for p in plans %}<td class="text-center">{{ p.bar_discount_pct }}%</td>{% endfor %}</tr>
+      <tr><th scope="row" class="fw-normal">Bookings per day</th>{% for p in plans %}<td class="text-center">{{ p.daily_booking_limit }}</td>{% endfor %}</tr>
+      <tr><th scope="row" class="fw-normal">Who can join</th>{% for p in plans %}<td class="text-center">{% if p.junior_only %}Under 18, with a guardian{% else %}18 and over{% endif %}</td>{% endfor %}</tr>
+    </tbody>
+  </table>
+</div>
+<h2 class="h5">Court prices for one hour (non-members)</h2>
+<div class="table-responsive bg-white border rounded mb-3">
+  <table class="table mb-0">
+    <thead><tr><th>Court</th><th>Sport</th><th class="text-end">Walk-in price</th></tr></thead>
+    <tbody>{% for c in courts %}<tr><td>{{ c.name }}</td><td>{{ c.sport.name }}</td><td class="text-end">{{ c.walk_in_rate_paise|rupees }}</td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+<a href="{% url 'enquiry' %}" class="btn btn-primary">Ask about membership</a>
+<a href="{% url 'trial' %}" class="btn btn-outline-primary">Book a trial</a>
+{% endblock %}

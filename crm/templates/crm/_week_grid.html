@@ -1,0 +1,14 @@
+{# One day's free/taken view for the public: hours as columns, courts as rows. No names. #}
+<div class="table-responsive bg-white border rounded mb-3">
+  <table class="table table-sm mb-0 text-center align-middle" style="font-size:.8rem">
+    <caption class="px-2">{{ d.day|date:"l j M" }} &middot; <span class="text-success">&#10003; free</span> &middot; <span class="text-muted">&ndash; taken or past</span></caption>
+    <thead><tr><th class="text-start">Court</th>{% for h in d.hours %}<th scope="col">{{ h|date:"ga" }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for court, states in d.rows %}
+      <tr><th scope="row" class="text-start fw-normal">{{ court.name }}</th>
+        {% for s in states %}<td>{% if s == "free" %}<span class="text-success" aria-label="free">&#10003;</span>{% else %}<span class="text-muted" aria-label="not available">&ndash;</span>{% endif %}</td>{% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

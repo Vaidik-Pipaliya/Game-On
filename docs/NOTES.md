@@ -90,3 +90,11 @@
 - **CSV export** of ledger and bookings for a date range; cells starting with `= + - @` are prefixed with `'` (CSV formula-injection protection).
 - `Ledger.created_at` now defaults to now (instead of auto_now_add) so history/demo rows can be dated; rows are still never edited. Added `record_expense` (used by payroll in M13). Owner-only (`role_required("owner")`).
 - Scale: aggregation happens in SQL (`values().annotate(Sum)`), indexed on `created_at`; pandas only sees 30 days of rows.
+
+## M11 - Public website, trial booking, leads
+- Public pages (no login): home (club info, today's free courts, schema.org `SportsActivityLocation` JSON-LD), plans comparison table (from the `Plan` rows, so prices are never typed twice), free courts for 7 days (reuses `grid_for_day`; shows only free/taken, never names), shop (M8), trial booking, enquiry. Each page has its own title + meta description; mobile navbar collapses.
+- **Every enquiry becomes a Lead** (`crm.services.create_lead`), auto-assigned to the owner/front-desk person with the fewest *open* leads, follow-up date = tomorrow, and that person is emailed **after commit** (`transaction.on_commit`), so a mail failure can never lose the enquiry.
+- **Trial booking** = `book_court` (walk-in rate, pay at the club, same overlap constraint) + a `trial` lead, in one transaction: if the slot is taken, no lead is saved either.
+- **Spam protection without CAPTCHA:** a hidden honeypot field (bots fill every field; we pretend success and store nothing) + rate limit of 5 submissions per IP per hour using Django's cache. Limitation: the default cache is per process; production with several processes would use a shared cache (database or Redis).
+- Pipeline: new -> contacted -> quoted -> won / lost (lost needs a reason; closed leads lose their follow-up date). Overdue follow-ups are highlighted; staff can log phone/walk-in enquiries; "Register as member" opens the member form prefilled and marks the lead won with a link to the new member.
+- Home page moved from `accounts` to `crm`. Club contact details are in `settings.CLUB` (env-overridable; demo values to replace).

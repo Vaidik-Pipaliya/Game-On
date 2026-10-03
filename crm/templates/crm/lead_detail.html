@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ lead.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'lead_list' %}" class="small">&larr; Leads</a>
+<div class="bg-white border rounded p-3 my-3">
+  <h1 class="h4 mb-1">{{ lead.name }} <span class="badge bg-secondary">{{ lead.get_status_display }}</span></h1>
+  <div class="text-muted">{{ lead.phone }}{% if lead.email %} &middot; {{ lead.email }}{% endif %} &middot; {{ lead.source }} &middot; {{ lead.created_at|date:"j M Y, H:i" }}</div>
+  {% if lead.message %}<p class="mt-2 mb-0">{{ lead.message }}</p>{% endif %}
+  {% if lead.trial_booking %}<p class="small mt-2 mb-0">Trial: {{ lead.trial_booking.court.name }}, {{ lead.trial_booking.start|date:"j M H:i" }} ({{ lead.trial_booking.status }})</p>{% endif %}
+  {% if lead.converted_member %}<p class="mt-2 mb-0">Became member <a href="{% url 'member_detail' lead.converted_member.pk %}">{{ lead.converted_member.full_name }}</a>.</p>
+  {% elif lead.is_open %}<a class="btn btn-sm btn-success mt-2" href="{% url 'member_new' %}?lead={{ lead.pk }}&amp;full_name={{ lead.name|urlencode }}&amp;phone={{ lead.phone|urlencode }}&amp;email={{ lead.email|urlencode }}">Register as member</a>{% endif %}
+</div>
+<form method="post" novalidate class="bg-white border rounded p-3 col-lg-6">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+  {% for field in form %}
+    <div class="mb-3">
+      <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+    </div>
+  {% endfor %}
+  <button class="btn btn-primary">Update lead</button>
+</form>
+{% endblock %}

@@ -86,6 +86,18 @@ USE_TZ = True
 
 LOGIN_URL = "/login/"
 
+# Bootstrap calls the red alert "danger"; Django calls that message level "error".
+MESSAGE_TAGS = {40: "danger"}
+
+# Public facts about the club, shown on the website and in structured data. Edit for the real club.
+CLUB = {
+    "name": "The Champions Club",
+    "phone": os.environ.get("CLUB_PHONE", "+91 98765 00000"),
+    "email": os.environ.get("CLUB_EMAIL", "hello@championsclub.example"),
+    "address": os.environ.get("CLUB_ADDRESS", "Sports Complex Road, Ahmedabad, Gujarat"),
+    "hours": "Every day, 06:00 to 22:00",
+}
+
 # Razorpay TEST mode keys (rzp_test_...). The secret and webhook secret never reach the browser.
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")

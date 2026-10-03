@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Leads{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Leads</h1>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn btn-sm {% if status == 'open' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?status=open">Open</a>
+  {% for value, label in statuses %}<a class="btn btn-sm {% if status == value %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?status={{ value }}">{{ label }}</a>{% endfor %}
+  <a class="btn btn-sm btn-outline-secondary ms-auto" href="?status={{ status }}&amp;mine=1">Only mine</a>
+</div>
+<div class="table-responsive bg-white border rounded mb-4">
+  <table class="table mb-0 align-middle">
+    <thead><tr><th>Name</th><th>Phone</th><th>Interest</th><th>Source</th><th>Status</th><th>Follow up</th><th>Owner</th></tr></thead>
+    <tbody>
+    {% for lead in leads %}
+      <tr {% if lead.is_open and lead.follow_up_date and lead.follow_up_date < today %}class="table-danger"{% endif %}>
+        <td><a href="{% url 'lead_detail' lead.pk %}">{{ lead.name }}</a></td>
+        <td>{{ lead.phone }}</td>
+        <td>{{ lead.sport_interest|default:"-" }}</td>
+        <td>{{ lead.source }}</td>
+        <td>{{ lead.get_status_display }}</td>
+        <td>{{ lead.follow_up_date|date:"j M"|default:"-" }}{% if lead.is_open and lead.follow_up_date and lead.follow_up_date < today %} <span class="badge bg-danger">Overdue</span>{% endif %}</td>
+        <td class="small">{{ lead.assigned_to.email|default:"-" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="text-center text-muted py-4">No leads here. New website enquiries appear automatically.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2 class="h5">Log a phone or walk-in enquiry</h2>
+<form method="post" novalidate class="bg-white border rounded p-3 col-lg-8">
+  {% csrf_token %}
+  <div class="row g-2">
+    {% for field in form %}
+      <div class="col-md-4">
+        <label class="form-label small" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+  <button class="btn btn-primary mt-2">Save lead</button>
+</form>
+{% endblock %}

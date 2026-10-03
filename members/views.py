@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from accounts.permissions import role_required
+from crm.models import Lead
 from finance.services import DESK_METHODS
 
 from .forms import MemberForm
@@ -22,7 +23,9 @@ def member_search(request):
 
 @desk_only
 def member_new(request):
-    form = MemberForm(request.POST or None)
+    # Coming from a won lead: prefill their details (CRM "convert to member").
+    prefill = {key: request.GET.get(key, "") for key in ("full_name", "phone", "email")}
+    form = MemberForm(request.POST or None, initial=prefill)
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
         try:
@@ -35,6 +38,7 @@ def member_new(request):
         except ValidationError as error:
             form.add_error(None, error.messages)  # rule broken, e.g. Junior without guardian
         else:
+            Lead.objects.filter(pk=request.GET.get("lead") or None).update(converted_member=member, status=Lead.Status.WON)
             messages.success(request, f"{member.full_name} is registered.")
             return redirect("member_detail", pk=member.pk)
     return render(request, "members/new.html", {"form": form})
