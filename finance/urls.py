@@ -6,4 +6,7 @@ urlpatterns = [
     path("pay/<int:pk>/", views.pay_page, name="pay_page"),
     path("pay/<int:pk>/verify/", views.pay_verify, name="pay_verify"),
     path("webhooks/razorpay/", views.razorpay_webhook, name="razorpay_webhook"),
+    path("owner/dashboard/", views.dashboard, name="owner_dashboard"),
+    path("owner/export/ledger.csv", views.export_ledger, name="export_ledger"),
+    path("owner/export/bookings.csv", views.export_bookings, name="export_bookings"),
 ]

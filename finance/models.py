@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 from members.models import Member
 
@@ -58,7 +59,8 @@ class Ledger(models.Model):
     reference_id = models.PositiveIntegerField(null=True, blank=True, help_text="Id of the booking/order/membership")
     note = models.CharField(max_length=200, blank=True)
     payment = models.ForeignKey(Payment, null=True, blank=True, on_delete=models.PROTECT)
-    created_at = models.DateTimeField(auto_now_add=True)
+    # Set once when the row is created (a default, so demo data can be dated in the past); never changed after.
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     objects = LedgerQuerySet.as_manager()
 
@@ -80,3 +82,20 @@ class Invoice(models.Model):
     gst_pct = models.PositiveSmallIntegerField(default=18)
     is_paid = models.BooleanField(default=False)
     issued_on = models.DateField()
+
+    @property
+    def gst_paise(self):
+        return (self.amount_paise * self.gst_pct + 50) // 100  # integer maths, rounded half up
+
+    @property
+    def cgst_paise(self):
+        """Within one state, GST is split half central (CGST), half state (SGST)."""
+        return self.gst_paise // 2
+
+    @property
+    def sgst_paise(self):
+        return self.gst_paise - self.cgst_paise  # the odd paisa goes here, so the halves always add up
+
+    @property
+    def total_paise(self):
+        return self.amount_paise + self.gst_paise

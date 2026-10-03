@@ -4,6 +4,9 @@
 <h1 class="h3">Staff desk</h1>
 {% with role=user.role su=user.is_superuser %}
 <div class="list-group col-md-5">
+  {% if su or role == "owner" %}
+    <a href="{% url 'owner_dashboard' %}" class="list-group-item list-group-item-action fw-bold">Owner dashboard: revenue, owed, analytics</a>
+  {% endif %}
   {% if su or role == "owner" or role == "front_desk" %}
     <a href="{% url 'booking_grid' %}" class="list-group-item list-group-item-action">Court grid: book and cancel</a>
     <a href="{% url 'social_list' %}" class="list-group-item list-group-item-action">Friday social play</a>

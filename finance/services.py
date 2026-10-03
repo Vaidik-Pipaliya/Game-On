@@ -16,22 +16,33 @@ from .models import Ledger, Method, Payment, Source
 DESK_METHODS = (Method.CASH, Method.CARD, Method.UPI)
 
 
-def record_payment(*, source, method, amount_paise, reference_id=None, note="", payment=None):
+def record_payment(*, source, method, amount_paise, reference_id=None, note="", payment=None, at=None):
+    """`at` is only for importing history / demo data; normal use records the current time."""
     if amount_paise <= 0:
         raise ValueError("A payment must be a positive amount.")
     return Ledger.objects.create(
         kind=Ledger.Kind.PAYMENT, source=source, method=method, amount_paise=amount_paise,
-        reference_id=reference_id, note=note, payment=payment,
+        reference_id=reference_id, note=note, payment=payment, created_at=at or timezone.now(),
     )
 
 
-def record_refund(*, source, method, amount_paise, reference_id=None, note=""):
+def record_refund(*, source, method, amount_paise, reference_id=None, note="", at=None):
     """A refund is a new negative row; the original payment row is never touched."""
     if amount_paise <= 0:
         raise ValueError("A refund must be a positive amount.")
     return Ledger.objects.create(
         kind=Ledger.Kind.REFUND, source=source, method=method, amount_paise=-amount_paise,
-        reference_id=reference_id, note=note,
+        reference_id=reference_id, note=note, created_at=at or timezone.now(),
+    )
+
+
+def record_expense(*, amount_paise, method, note, reference_id=None, at=None):
+    """Money going out (e.g. salaries). Negative, and never counted as revenue."""
+    if amount_paise <= 0:
+        raise ValueError("An expense must be a positive amount.")
+    return Ledger.objects.create(
+        kind=Ledger.Kind.EXPENSE, method=method, amount_paise=-amount_paise,
+        reference_id=reference_id, note=note, created_at=at or timezone.now(),
     )
 
 

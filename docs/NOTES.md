@@ -81,3 +81,12 @@
 - **Day report:** takings by method (from the ledger), member discounts given, tabs closed/voided, open tabs with running totals.
 - Only empty tabs can be voided; other voids would need manager approval + audit (not built).
 - `config/clock.py: local_day_bounds()` is now shared by courts, bar and (next) reports. `docs/ARCHITECTURE.md` has the technology diagram.
+
+## M10 - Owner dashboard, analytics, CSV
+- **Every number is a sum of the Ledger** (`finance/reports.py`): revenue = payments + refunds (refunds are negative), split by source x method. Expenses are a separate kind and never counted as revenue. So the dashboard always equals the sum of the daily reports (test checks month total == sum of daily totals).
+- Periods are club-local (Asia/Kolkata) days via `local_day_bounds`; a sale at 23:59 IST is still "today" although it's a different date in UTC (tested). Week starts Monday. Comparison is like-for-like "so far": this week Mon..today vs the same weekdays last week; this month 1st..today vs the same number of days of last month (clipped for February).
+- **Amounts owed:** open bar tabs (live bill incl. discount), unpaid court bookings, unpaid online shop orders, unpaid invoices incl. GST.
+- **Analytics with pandas** (`finance/analytics.py`): 30-day revenue trend (missing days filled with 0), court utilisation % = booked hours / open hours (16 h x 30 days), peak hours = sessions started per hour. Drawn with Chart.js from a `json_script` block (no inline data in JS strings).
+- **CSV export** of ledger and bookings for a date range; cells starting with `= + - @` are prefixed with `'` (CSV formula-injection protection).
+- `Ledger.created_at` now defaults to now (instead of auto_now_add) so history/demo rows can be dated; rows are still never edited. Added `record_expense` (used by payroll in M13). Owner-only (`role_required("owner")`).
+- Scale: aggregation happens in SQL (`values().annotate(Sum)`), indexed on `created_at`; pandas only sees 30 days of rows.

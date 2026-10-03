@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Owner dashboard{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h3 mb-0">Owner dashboard <span class="small text-muted">{{ today|date:"j M Y" }}</span></h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'export_ledger' %}">Export ledger CSV</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'export_bookings' %}">Export bookings CSV</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  {% for key, label, s in summaries %}
+  <div class="col-md-4">
+    <a href="?period={{ key }}" class="d-block bg-white border rounded p-3 text-decoration-none text-dark {% if key == period %}border-primary border-2{% endif %}">
+      <div class="small text-muted">{{ label }} revenue</div>
+      <div class="fs-3 fw-bold" style="font-variant-numeric: tabular-nums">{{ s.total|rupees }}</div>
+      <div class="small">
+        {% if s.change_pct is None %}<span class="text-muted">No sales in the previous period</span>
+        {% elif s.change_pct >= 0 %}<span class="text-success">&uarr; {{ s.change_pct }}%</span> vs {{ s.previous_total|rupees }} before
+        {% else %}<span class="text-danger">&darr; {{ s.change_pct }}%</span> vs {{ s.previous_total|rupees }} before{% endif %}
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <h2 class="h5">Where the money came from: {% for key, label in periods %}{% if key == period %}{{ label|lower }}{% endif %}{% endfor %}</h2>
+    <div class="table-responsive bg-white border rounded">
+      <table class="table mb-0" style="font-variant-numeric: tabular-nums">
+        <thead><tr><th>Source</th>{% for value, label in methods %}<th class="text-end">{{ label }}</th>{% endfor %}<th class="text-end">Total</th></tr></thead>
+        <tbody>
+        {% for label, cells, total in matrix_rows %}
+          <tr><td>{{ label }}</td>{% for c in cells %}<td class="text-end">{{ c|rupees }}</td>{% endfor %}<td class="text-end fw-bold">{{ total|rupees }}</td></tr>
+        {% endfor %}
+        </tbody>
+        <tfoot><tr><th>Total</th>{% for t in method_totals %}<th class="text-end">{{ t|rupees }}</th>{% endfor %}<th class="text-end">{{ selected.total|rupees }}</th></tr></tfoot>
+      </table>
+    </div>
+    <p class="small text-muted mt-1">Net of refunds. Every figure is a sum of the ledger, the same rows the daily close reports use.</p>
+  </div>
+  <div class="col-lg-4">
+    <h2 class="h5">What we are owed</h2>
+    <ul class="list-group mb-2">
+      {% for label, pair in owed.items.items %}
+        <li class="list-group-item d-flex justify-content-between"><span>{{ label }} <span class="text-muted small">({{ pair.0 }})</span></span><span>{{ pair.1|rupees }}</span></li>
+      {% endfor %}
+      <li class="list-group-item d-flex justify-content-between fw-bold"><span>Total owed</span><span>{{ owed.total|rupees }}</span></li>
+    </ul>
+    <p class="small">Expenses this month (salaries): <strong>{{ month_expenses|rupees }}</strong></p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-12"><div class="bg-white border rounded p-3"><h2 class="h6">Revenue, last 30 days (₹)</h2><canvas id="trend" height="80"></canvas></div></div>
+  <div class="col-lg-6"><div class="bg-white border rounded p-3"><h2 class="h6">Court utilisation, last 30 days (% of open hours)</h2><canvas id="utilisation"></canvas></div></div>
+  <div class="col-lg-6"><div class="bg-white border rounded p-3"><h2 class="h6">Peak hours (sessions started), last 30 days</h2><canvas id="peaks"></canvas></div></div>
+</div>
+{{ charts|json_script:"chart-data" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+  const data = JSON.parse(document.getElementById("chart-data").textContent);
+  const blue = "#17407a";
+  const noLegend = { plugins: { legend: { display: false } } };
+  new Chart(document.getElementById("trend"), {
+    type: "line",
+    data: { labels: data.trend.labels, datasets: [{ data: data.trend.rupees, borderColor: blue, tension: 0.2 }] },
+    options: noLegend,
+  });
+  new Chart(document.getElementById("utilisation"), {
+    type: "bar",
+    data: { labels: data.utilisation.labels, datasets: [{ data: data.utilisation.percent, backgroundColor: blue }] },
+    options: { ...noLegend, scales: { y: { beginAtZero: true, max: 100 } } },
+  });
+  new Chart(document.getElementById("peaks"), {
+    type: "bar",
+    data: { labels: data.peaks.labels, datasets: [{ data: data.peaks.sessions, backgroundColor: "#2b6c9e" }] },
+    options: { ...noLegend, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+  });
+</script>
+{% endblock %}

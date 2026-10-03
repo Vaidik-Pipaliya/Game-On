@@ -1,4 +1,6 @@
+import csv
 import json
+from datetime import date
 
 from django.conf import settings
 from django.contrib import messages
@@ -11,11 +13,14 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 
-from accounts.permissions import STAFF_ROLES
+from accounts.permissions import STAFF_ROLES, role_required
+from config.clock import local_day_bounds
 from courts.models import Booking
 from shop.models import Order
 
-from .models import Payment, Source
+from .analytics import court_utilisation, peak_hours, revenue_trend
+from .models import Ledger, Method, Payment, Source
+from .reports import amounts_owed, expenses, period_ranges, period_summary
 from .services import checkout_signature_is_valid, mark_payment_captured, webhook_signature_is_valid
 
 
@@ -93,3 +98,100 @@ def razorpay_webhook(request):
         )
     # Always 200 for a correctly signed event (even ones we ignore), so Razorpay stops retrying.
     return HttpResponse("ok")
+
+
+# ---- Owner dashboard and exports ----
+
+owner_only = role_required("owner")
+PERIODS = (("today", "Today"), ("week", "This week"), ("month", "This month"))
+
+
+@owner_only
+def dashboard(request):
+    today = timezone.localdate()
+    period = request.GET.get("period", "month")
+    if period not in dict(PERIODS):
+        period = "month"
+    summaries = [(key, label, period_summary(key, today)) for key, label in PERIODS]
+    selected = dict((key, s) for key, _, s in summaries)[period]
+    month_start, month_days = period_ranges("month", today)[0]
+    return render(request, "finance/dashboard.html", {
+        "today": today,
+        "period": period,
+        "periods": PERIODS,
+        "summaries": summaries,
+        "selected": selected,
+        # source x method table as plain rows (templates can't index a dict by a variable)
+        "methods": Method.choices,
+        "matrix_rows": [
+            (label, [selected["matrix"][source][m] for m in Method.values], selected["by_source"][source])
+            for source, label in Source.choices
+        ],
+        "method_totals": [selected["by_method"][m] for m in Method.values],
+        "owed": amounts_owed(),
+        "month_expenses": expenses(*local_day_bounds(month_start, month_days)),
+        "charts": {
+            "trend": revenue_trend(today),
+            "utilisation": court_utilisation(today),
+            "peaks": peak_hours(today),
+        },
+    })
+
+
+def _csv_safe(value):
+    """Spreadsheets run cells starting with = + - @ as formulas; prefix text with ' so names can't inject one."""
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@"):
+        return "'" + value
+    return value
+
+
+def _csv_response(filename, header, rows):
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow(header)
+    for row in rows:
+        writer.writerow([_csv_safe(v) for v in row])
+    return response
+
+
+def _date_range(request):
+    today = timezone.localdate()
+    try:
+        first = date.fromisoformat(request.GET.get("from", ""))
+    except ValueError:
+        first = today.replace(day=1)
+    try:
+        last = date.fromisoformat(request.GET.get("to", ""))
+    except ValueError:
+        last = today
+    if last < first:
+        first, last = last, first
+    return first, last
+
+
+@owner_only
+def export_ledger(request):
+    first, last = _date_range(request)
+    start, end = local_day_bounds(first, (last - first).days + 1)
+    rows = (
+        (timezone.localtime(r.created_at).strftime("%Y-%m-%d %H:%M"), r.kind, r.source, r.method,
+         f"{r.amount_paise / 100:.2f}", r.reference_id or "", r.note)
+        for r in Ledger.objects.filter(created_at__gte=start, created_at__lt=end).order_by("created_at")
+    )
+    return _csv_response(f"ledger_{first}_{last}.csv",
+                         ["time", "kind", "source", "method", "amount_rupees", "reference", "note"], rows)
+
+
+@owner_only
+def export_bookings(request):
+    first, last = _date_range(request)
+    start, end = local_day_bounds(first, (last - first).days + 1)
+    rows = (
+        (timezone.localtime(b.start).strftime("%Y-%m-%d %H:%M"), b.court.name, b.kind, b.status,
+         b.member.full_name if b.member else b.guest_name, f"{b.price_paise / 100:.2f}",
+         "yes" if b.is_paid else "no", b.payment_method)
+        for b in Booking.objects.filter(start__gte=start, start__lt=end).select_related("court", "member").order_by("start")
+    )
+    return _csv_response(f"bookings_{first}_{last}.csv",
+                         ["start", "court", "kind", "status", "who", "price_rupees", "paid", "method"], rows)
