@@ -50,7 +50,7 @@ Each of these is a rule that **cannot be broken by a race, a double-click or a r
 12. **Refunds that can't be forgotten or doubled.** The ledger refund and a "refund pending" mark are saved in the cancellation's own transaction; Razorpay is asked after commit, under a row lock, once. Failures are visible and retryable.
 13. **An audit trail written in the same transaction as the action**, append-only (edits and deletes raise), covering refunds, stock, payroll, leave, invoices and role changes.
 
-**322 automated tests** (Django `TestCase`, real PostgreSQL, real threads for the concurrency tests).
+**339 automated tests** (Django `TestCase`, real PostgreSQL, real threads for the concurrency tests).
 
 ## Architecture
 
