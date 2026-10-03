@@ -16,6 +16,8 @@ class Product(models.Model):
     category = models.CharField(max_length=20, choices=Category.choices)
     price_paise = models.PositiveIntegerField()
     is_active = models.BooleanField(default=True)
+    # A picture link (hosted anywhere). Optional: with no link the shop shows a category icon.
+    image_url = models.URLField(blank=True, default="", db_default="")
 
     def __str__(self):
         return self.name

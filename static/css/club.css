@@ -370,3 +370,7 @@ table.cgrid { border-collapse: separate; border-spacing: 0; font-size: .75rem; w
 .page, .shell-staff .page { min-width: 0; width: 100%; }
 .shell-main { min-width: 0; }
 .row > * { min-width: 0; }
+
+.product-img { aspect-ratio: 4 / 3; margin: -1.1rem -1.25rem 1rem; border-radius: 10px 10px 0 0; overflow: hidden; background: var(--court-100); display: grid; place-items: center; }
+.product-img img { width: 100%; height: 100%; object-fit: cover; }
+.product-img .msym { font-size: 56px; color: var(--court-700); opacity: .6; }

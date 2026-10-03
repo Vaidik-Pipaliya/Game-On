@@ -161,6 +161,12 @@ class ShopScreenTests(ShopFixtures, TestCase):
         self.assertContains(response, "Out of stock")
         self.assertContains(response, "In stock")
 
+    def test_catalog_shows_picture_or_category_icon(self):
+        Product.objects.filter(name="Court Shoes").update(image_url="https://example.com/shoe.jpg")
+        response = self.client.get(reverse("shop_catalog"))
+        self.assertContains(response, 'src="https://example.com/shoe.jpg"')
+        self.assertContains(response, "product-img")  # products without a link still get an icon tile
+
     def test_add_to_cart_then_checkout_requires_login(self):
         self.client.post(reverse("shop_cart_add"), {"variant": self.balls.pk, "quantity": 2})
         self.assertEqual(self.client.session["cart"], {str(self.balls.pk): 2})
