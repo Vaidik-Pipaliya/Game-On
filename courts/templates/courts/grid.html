@@ -67,7 +67,7 @@
 <h2 class="h5">Bookings on {{ day|date:"j M" }}</h2>
 <div class="table-responsive bg-white border rounded">
   <table class="table mb-0 align-middle">
-    <thead><tr><th>Time</th><th>Court</th><th>Who</th><th>Type</th><th class="text-end">Price</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Time</th><th>Court</th><th>Who</th><th>Type</th><th class="text-end">Price</th><th>Payment</th><th>Status</th><th></th></tr></thead>
     <tbody>
     {% for b in bookings %}
       <tr>
@@ -76,6 +76,17 @@
         <td>{% if b.member %}<a href="{% url 'member_detail' b.member.pk %}">{{ b.member.full_name }}</a>{% else %}{{ b.guest_name }} <span class="text-muted">{{ b.guest_phone }}</span>{% endif %}</td>
         <td>{% if b.kind == "social" %}Social seat{% else %}Whole court{% endif %}</td>
         <td class="text-end">{{ b.price_paise|rupees }}</td>
+        <td>
+          {% if b.is_paid %}<span class="badge bg-success">Paid</span> <span class="small text-muted">{{ b.payment_method }}</span>
+          {% elif b.status == "confirmed" %}
+            <form method="post" action="{% url 'booking_pay' b.pk %}" class="d-flex gap-1">{% csrf_token %}
+              <select name="payment_method" class="form-select form-select-sm w-auto" aria-label="Payment method">
+                {% for value, label in methods %}<option value="{{ value }}"{% if value == b.payment_method %} selected{% endif %}>{{ label }}</option>{% endfor %}
+              </select>
+              <button class="btn btn-sm btn-outline-primary">Take payment</button>
+            </form>
+          {% else %}<span class="small text-muted">Unpaid</span>{% endif %}
+        </td>
         <td>{{ b.status|capfirst }}</td>
         <td class="text-end">
           {% if b.status == "confirmed" %}
@@ -86,7 +97,7 @@
         </td>
       </tr>
     {% empty %}
-      <tr><td colspan="7" class="text-center text-muted py-4">No bookings on this day yet. Click a + in the grid to book a court.</td></tr>
+      <tr><td colspan="8" class="text-center text-muted py-4">No bookings on this day yet. Click a + in the grid to book a court.</td></tr>
     {% endfor %}
     </tbody>
   </table>

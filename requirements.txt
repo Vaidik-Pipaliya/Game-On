@@ -2,3 +2,4 @@ django>=6.1,<6.2
 psycopg2-binary
 python-dotenv
 firebase-admin
+razorpay

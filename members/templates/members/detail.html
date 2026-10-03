@@ -17,7 +17,11 @@
     {% if member.emergency_contact %}<div>Emergency contact: {{ member.emergency_contact }}</div>{% endif %}
   </div>
   {% if current %}
-  <form method="post" action="{% url 'member_renew' member.pk %}">{% csrf_token %}
+  <form method="post" action="{% url 'member_renew' member.pk %}" class="d-flex gap-2 align-items-center">{% csrf_token %}
+    <label class="small text-muted" for="renew-method">Fee {{ current.plan.price_paise|rupees }} paid by</label>
+    <select id="renew-method" name="payment_method" class="form-select form-select-sm w-auto">
+      {% for m in desk_methods %}<option value="{{ m.value }}">{{ m.label }}</option>{% endfor %}
+    </select>
     <button class="btn btn-primary">Renew membership</button>
   </form>
   {% endif %}

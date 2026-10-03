@@ -71,6 +71,9 @@ class Booking(models.Model):
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.CONFIRMED)
     # Price is frozen when the booking is made, so later plan changes never rewrite history.
     price_paise = models.PositiveIntegerField(default=0)
+    # "" until paid; then cash / card / upi / online. Free sessions are marked paid with no method.
+    payment_method = models.CharField(max_length=10, blank=True)
+    is_paid = models.BooleanField(default=False)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
 

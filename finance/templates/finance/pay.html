@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Pay online{% endblock %}
+{% block content %}
+<div class="col-md-5 mx-auto text-center">
+  <h1 class="h3">Pay {{ payment.amount_paise|rupees }}</h1>
+  <p class="text-muted">{{ payment.get_source_display }} #{{ payment.reference_id }} &middot; Razorpay test mode</p>
+  <button id="pay-btn" class="btn btn-primary btn-lg w-100">Pay {{ payment.amount_paise|rupees }} online</button>
+  <div id="pay-error" class="alert alert-danger mt-3 d-none" role="alert"></div>
+  <a href="{% url 'booking_grid' %}" class="btn btn-link mt-2">Pay at the desk instead</a>
+</div>
+{% csrf_token %}
+{{ checkout|json_script:"checkout-options" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  const options = JSON.parse(document.getElementById("checkout-options").textContent);
+  const errorBox = document.getElementById("pay-error");
+  function showError(text) { errorBox.textContent = text; errorBox.classList.remove("d-none"); }
+
+  // Razorpay calls this after a successful payment; the server re-checks the signature before recording money.
+  options.handler = async (response) => {
+    const body = new URLSearchParams({
+      razorpay_payment_id: response.razorpay_payment_id,
+      razorpay_signature: response.razorpay_signature,
+    });
+    const reply = await fetch("{% url 'pay_verify' payment.pk %}", {
+      method: "POST",
+      headers: { "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value },
+      body,
+    });
+    const data = await reply.json();
+    if (!reply.ok) return showError(data.error);
+    window.location.href = data.next;
+  };
+
+  const checkout = new Razorpay(options);
+  checkout.on("payment.failed", (r) => showError("Payment failed: " + r.error.description + " Try again or pay at the desk."));
+  document.getElementById("pay-btn").addEventListener("click", () => { errorBox.classList.add("d-none"); checkout.open(); });
+</script>
+{% endblock %}

@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from accounts.permissions import role_required
+from finance.services import DESK_METHODS
 
 from .forms import MemberForm
 from .models import Member
@@ -29,6 +30,7 @@ def member_new(request):
                 full_name=data["full_name"], phone=data["phone"], email=data["email"],
                 date_of_birth=data["date_of_birth"], plan=data["plan"], guardian=data["guardian_phone"],
                 emergency_contact=data["emergency_contact"], whatsapp_opt_in=data["whatsapp_opt_in"],
+                payment_method=data["payment_method"],
             )
         except ValidationError as error:
             form.add_error(None, error.messages)  # rule broken, e.g. Junior without guardian
@@ -45,6 +47,7 @@ def member_detail(request, pk):
         "member": member,
         "memberships": sorted(member.memberships.all(), key=lambda m: m.end_date, reverse=True),
         "current": member.current_membership,
+        "desk_methods": DESK_METHODS,
         # Reverse relations, so this app never imports the other apps' models.
         "bookings": member.bookings.select_related("court").order_by("-start")[:10],
         "orders": member.order_set.order_by("-created_at")[:10],
@@ -56,8 +59,12 @@ def member_detail(request, pk):
 @require_POST
 def member_renew(request, pk):
     member = get_object_or_404(Member, pk=pk)
+    payment_method = request.POST.get("payment_method")
+    if payment_method not in DESK_METHODS:
+        messages.error(request, "Choose how the renewal fee was paid.")
+        return redirect("member_detail", pk=pk)
     try:
-        membership = renew_membership(member)
+        membership = renew_membership(member, payment_method=payment_method)
     except ValidationError as error:
         messages.error(request, error.messages[0])
     else:

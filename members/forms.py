@@ -2,6 +2,7 @@ from django import forms
 from django.utils import timezone
 
 from accounts.forms import BootstrapFormMixin
+from finance.services import DESK_METHODS
 
 from .models import Member, Plan
 from .services import normalize_phone
@@ -18,6 +19,7 @@ class MemberForm(BootstrapFormMixin, forms.Form):
     plan = forms.ModelChoiceField(queryset=Plan.objects.order_by("-price_paise"))
     guardian_phone = forms.CharField(required=False, label="Guardian's phone", help_text="Only for Junior members")
     whatsapp_opt_in = forms.BooleanField(required=False, label="Member agrees to WhatsApp messages")
+    payment_method = forms.ChoiceField(choices=[(m.value, m.label) for m in DESK_METHODS], label="Fee paid by")
 
     def clean_phone(self):
         phone = normalize_phone(self.cleaned_data["phone"])

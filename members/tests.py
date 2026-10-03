@@ -159,7 +159,7 @@ class MemberScreenTests(TestCase):
 
     def form_data(self, **overrides):
         data = {"full_name": "Kavya Rao", "phone": "+91 98765 43210", "email": "k@example.com",
-                "date_of_birth": "1992-04-05", "plan": self.gold.pk}
+                "date_of_birth": "1992-04-05", "plan": self.gold.pk, "payment_method": "cash"}
         return {**data, **overrides}
 
     def test_member_role_is_forbidden(self):

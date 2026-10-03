@@ -8,6 +8,8 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from finance.models import Method, Source
+from finance.services import DESK_METHODS, record_payment, record_refund
 from members.models import Member
 from members.pricing import price_for
 
@@ -79,8 +81,41 @@ def _require_who(member, guest_name, guest_phone):
         raise ValidationError("Enter the guest's name and phone number.")
 
 
-def book_court(*, court, start, member=None, guest_name="", guest_phone="", created_by=None, now=None):
-    """Book one 60-minute session. Returns the confirmed Booking or raises a ValidationError subclass."""
+def _apply_payment(booking, payment_method):
+    """Runs inside the booking's transaction: the booking and its ledger row are saved together or not at all."""
+    if booking.price_paise == 0:
+        booking.is_paid = True
+    elif payment_method in DESK_METHODS:
+        record_payment(
+            source=Source.COURT, method=payment_method, amount_paise=booking.price_paise,
+            reference_id=booking.pk, note=f"Court booking #{booking.pk}",
+        )
+        booking.is_paid = True
+        booking.payment_method = payment_method
+    elif payment_method == Method.ONLINE:
+        booking.payment_method = Method.ONLINE  # marked paid when Razorpay confirms (finance.mark_payment_captured)
+    booking.save(update_fields=["is_paid", "payment_method"])
+
+
+def take_booking_payment(booking, payment_method):
+    """Pay for an unpaid booking later (e.g. an online payment that was abandoned)."""
+    with transaction.atomic():
+        booking = Booking.objects.select_for_update().get(pk=booking.pk)  # no double payment on double-click
+        if booking.status != Booking.Status.CONFIRMED:
+            raise ValidationError("This booking is cancelled.")
+        if booking.is_paid:
+            raise ValidationError("This booking is already paid.")
+        _apply_payment(booking, payment_method)
+    return booking
+
+
+def book_court(*, court, start, member=None, guest_name="", guest_phone="", payment_method=None,
+               created_by=None, now=None):
+    """Book one 60-minute session. Returns the confirmed Booking or raises a ValidationError subclass.
+
+    payment_method: cash/card/upi records the payment now; "online" leaves it unpaid until
+    Razorpay confirms; None means pay later.
+    """
     now = now or timezone.now()
     validate_slot_start(start, now)
     if not court.is_active:
@@ -102,10 +137,12 @@ def book_court(*, court, start, member=None, guest_name="", guest_phone="", crea
                 free_hours_left=_free_hours_left(member, membership, day), today=day,
             ).amount_paise
         # An overlapping insert raises IntegrityError from the exclusion constraint.
-        return Booking.objects.create(
+        booking = Booking.objects.create(
             court=court, member=member, guest_name=guest_name.strip(), guest_phone=guest_phone.strip(),
             start=start, end=start + SESSION, price_paise=price_paise, created_by=created_by,
         )
+        _apply_payment(booking, payment_method)
+        return booking
 
 
 def _enforce_daily_limit(member, membership, day):
@@ -136,7 +173,7 @@ def _free_hours_left(member, membership, day):
 
 
 def cancel_booking(booking, *, now=None):
-    """Cancel a confirmed booking. Full refund if at least 24h ahead, none inside the window."""
+    """Cancel a confirmed booking. A paid booking cancelled 24h+ ahead is refunded in full, by the same method."""
     now = now or timezone.now()
     with transaction.atomic():
         # Lock the row so a double-click cancels once and refunds once.
@@ -147,8 +184,13 @@ def cancel_booking(booking, *, now=None):
             raise ValidationError("This slot belongs to a social session. Cancel the session instead.")
         booking.status = Booking.Status.CANCELLED
         booking.save(update_fields=["status"])
-    refundable = booking.start - now >= CANCEL_WINDOW
-    return CancelResult(booking, booking.price_paise if refundable else 0)
+        refund = booking.price_paise if booking.is_paid and booking.start - now >= CANCEL_WINDOW else 0
+        if refund:
+            record_refund(
+                source=Source.COURT, method=booking.payment_method, amount_paise=refund,
+                reference_id=booking.pk, note=f"Cancelled booking #{booking.pk}",
+            )
+    return CancelResult(booking, refund)
 
 
 def create_social_session(*, court, start, capacity, price_per_player_paise, created_by=None, now=None):
@@ -181,7 +223,8 @@ def seats_taken(session):
     ).count()
 
 
-def join_social_session(*, session, member=None, guest_name="", guest_phone="", created_by=None, now=None):
+def join_social_session(*, session, member=None, guest_name="", guest_phone="", payment_method=None,
+                        created_by=None, now=None):
     """Add one player. Counts toward a member's daily limit like any other booking."""
     now = now or timezone.now()
     if session.start <= now:
@@ -205,11 +248,13 @@ def join_social_session(*, session, member=None, guest_name="", guest_phone="", 
         ).exists():
             raise ValidationError(f"{member.full_name} has already joined this session.")
         price = price_for("court", session.price_per_player_paise, membership, today=day).amount_paise
-        return Booking.objects.create(
+        seat = Booking.objects.create(
             court=session.court, member=member, guest_name=guest_name.strip(), guest_phone=guest_phone.strip(),
             start=session.start, end=session.end, kind=Booking.Kind.SOCIAL, social_session=session,
             price_paise=price, created_by=created_by,
         )
+        _apply_payment(seat, payment_method)
+        return seat
 
 
 def grid_for_day(day, sport=None, now=None):

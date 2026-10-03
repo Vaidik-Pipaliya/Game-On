@@ -9,6 +9,9 @@ from django.db import transaction
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
+from finance.models import Source
+from finance.services import record_payment
+
 from .models import Member, Membership
 
 ADULT_AGE = 18
@@ -33,9 +36,17 @@ def age_on(born, day):
     return day.year - born.year - ((day.month, day.day) < (born.month, born.day))
 
 
+def _record_fee(membership, payment_method):
+    if payment_method and membership.plan.price_paise:
+        record_payment(
+            source=Source.MEMBERSHIP, method=payment_method, amount_paise=membership.plan.price_paise,
+            reference_id=membership.pk, note=f"{membership.plan.name} membership for {membership.member.full_name}",
+        )
+
+
 def register_member(*, full_name, phone, email, date_of_birth, plan, guardian=None,
-                    emergency_contact="", whatsapp_opt_in=False, today=None):
-    """Create the member and their first membership together, or neither."""
+                    emergency_contact="", whatsapp_opt_in=False, payment_method=None, today=None):
+    """Create the member, their first membership and the fee payment together, or none of them."""
     today = today or timezone.localdate()
     is_minor = age_on(date_of_birth, today) < ADULT_AGE
 
@@ -56,22 +67,26 @@ def register_member(*, full_name, phone, email, date_of_birth, plan, guardian=No
             full_name=full_name, phone=phone, email=email, date_of_birth=date_of_birth,
             emergency_contact=emergency_contact, guardian=guardian, whatsapp_opt_in=whatsapp_opt_in,
         )
-        Membership.objects.create(
+        membership = Membership.objects.create(
             member=member, plan=plan, start_date=today, end_date=today + timedelta(days=plan.duration_days),
         )
+        _record_fee(membership, payment_method)
     return member
 
 
-def renew_membership(member, today=None):
+def renew_membership(member, payment_method=None, today=None):
     """Extend on the same plan. An unexpired membership is extended from its end date, so no paid days are lost."""
     today = today or timezone.localdate()
     last = member.current_membership
     if last is None:
         raise ValidationError("This member has no membership to renew.")
     start = today if last.end_date < today else last.end_date + timedelta(days=1)
-    return Membership.objects.create(
-        member=member, plan=last.plan, start_date=start, end_date=start + timedelta(days=last.plan.duration_days),
-    )
+    with transaction.atomic():
+        membership = Membership.objects.create(
+            member=member, plan=last.plan, start_date=start, end_date=start + timedelta(days=last.plan.duration_days),
+        )
+        _record_fee(membership, payment_method)
+    return membership
 
 
 def search_members(query, limit=20):

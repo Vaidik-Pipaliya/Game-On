@@ -14,18 +14,32 @@ class Method(models.TextChoices):
     CASH = "cash"
     CARD = "card"
     UPI = "upi"
-    ONLINE = "online"
+    ONLINE = "online", "Online (Razorpay)"
 
 
 class Payment(models.Model):
-    """An online (Razorpay) payment attempt. The unique gateway id makes webhook replays harmless."""
+    """One Razorpay order. The unique gateway payment id makes webhook replays harmless."""
 
+    class Status(models.TextChoices):
+        CREATED = "created"
+        PAID = "paid"
+
+    razorpay_order_id = models.CharField(max_length=64, unique=True)
     razorpay_payment_id = models.CharField(max_length=64, unique=True, null=True, blank=True)
-    razorpay_order_id = models.CharField(max_length=64, blank=True)
     source = models.CharField(max_length=12, choices=Source.choices)
+    reference_id = models.PositiveIntegerField(help_text="Id of the booking/order this pays for")
     amount_paise = models.PositiveIntegerField()
-    status = models.CharField(max_length=10, default="created")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.CREATED)
     created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+
+class LedgerQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise TypeError("Ledger rows are never edited. Add a reversing row instead.")
+
+    def delete(self):
+        raise TypeError("Ledger rows are never deleted. Add a reversing row instead.")
 
 
 class Ledger(models.Model):
@@ -39,11 +53,22 @@ class Ledger(models.Model):
     kind = models.CharField(max_length=10, choices=Kind.choices)
     source = models.CharField(max_length=12, choices=Source.choices, blank=True)
     method = models.CharField(max_length=10, choices=Method.choices, blank=True)
-    # Signed: payments are positive, refunds and expenses are negative. Rows are never edited or deleted.
+    # Signed: payments are positive, refunds and expenses are negative.
     amount_paise = models.IntegerField()
+    reference_id = models.PositiveIntegerField(null=True, blank=True, help_text="Id of the booking/order/membership")
     note = models.CharField(max_length=200, blank=True)
     payment = models.ForeignKey(Payment, null=True, blank=True, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = LedgerQuerySet.as_manager()
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise TypeError("Ledger rows are never edited. Add a reversing row instead.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise TypeError("Ledger rows are never deleted. Add a reversing row instead.")
 
 
 class Invoice(models.Model):

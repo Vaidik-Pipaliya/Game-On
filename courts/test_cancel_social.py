@@ -17,17 +17,17 @@ class CancelTests(Fixtures, TestCase):
         self.member = self.make_member(self.silver)
 
     def test_cancel_more_than_24h_ahead_refunds_in_full(self):
-        booking = self.book(self.court1, at(10, 18), member=self.member)
+        booking = self.book(self.court1, at(10, 18), member=self.member, payment_method="cash")
         result = cancel_booking(booking, now=at(8, 17))  # 49h before
         self.assertEqual(result.refund_paise, 68000)
         self.assertEqual(result.booking.status, Booking.Status.CANCELLED)
 
     def test_cancel_inside_24h_gives_no_refund(self):
-        booking = self.book(self.court1, at(10, 18), member=self.member)
+        booking = self.book(self.court1, at(10, 18), member=self.member, payment_method="cash")
         self.assertEqual(cancel_booking(booking, now=at(10, 8)).refund_paise, 0)
 
     def test_exactly_24h_ahead_still_refunds(self):
-        booking = self.book(self.court1, at(10, 18), member=self.member)
+        booking = self.book(self.court1, at(10, 18), member=self.member, payment_method="cash")
         self.assertEqual(cancel_booking(booking, now=at(9, 18)).refund_paise, 68000)
 
     def test_cancelling_frees_the_slot_for_someone_else(self):

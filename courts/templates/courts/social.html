@@ -45,8 +45,13 @@
     {% csrf_token %}
     <div class="col-md-3"><input class="form-control form-control-sm" name="member_phone" placeholder="Member's phone"></div>
     <div class="col-md-3"><input class="form-control form-control-sm" name="guest_name" placeholder="or guest name"></div>
-    <div class="col-md-3"><input class="form-control form-control-sm" name="guest_phone" placeholder="guest phone"></div>
-    <div class="col-md-3"><button class="btn btn-sm btn-primary">Add player</button></div>
+    <div class="col-md-2"><input class="form-control form-control-sm" name="guest_phone" placeholder="guest phone"></div>
+    <div class="col-md-2">
+      <select name="payment_method" class="form-select form-select-sm" aria-label="Paid by">
+        <option value="cash">Cash</option><option value="card">Card</option><option value="upi">UPI</option>
+      </select>
+    </div>
+    <div class="col-md-2"><button class="btn btn-sm btn-primary">Add player</button></div>
   </form>
 </div>
 {% empty %}

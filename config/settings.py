@@ -86,6 +86,11 @@ USE_TZ = True
 
 LOGIN_URL = "/login/"
 
+# Razorpay TEST mode keys (rzp_test_...). The secret and webhook secret never reach the browser.
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
+
 # Dev prints emails in the terminal; production sets EMAIL_BACKEND to SMTP (done in M12).
 EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "The Champions Club <noreply@championsclub.example>")

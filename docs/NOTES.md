@@ -51,3 +51,13 @@
 - Screens: `/desk/book/` court grid (courts x 30-min starts, sport filter, day stepper, + links prefill the form), `/desk/book/new/` (member by phone or walk-in name + phone), day list with Cancel, `/desk/social/`.
 - `grid_for_day` loads the day's bookings in one query and matches in Python: ~5 courts x 31 slots, trivial. With hundreds of courts we'd group by court in SQL.
 - Shared helpers: `members.services.normalize_phone/find_member_by_phone`, `accounts.forms.BootstrapFormMixin`.
+
+## M7 - Payments, ledger, Razorpay (test mode)
+- **One ledger, one door:** only `finance/services.py` creates `Ledger` rows (`record_payment` +, `record_refund` -). Rows are append-only: `save()` on an existing row, `delete()`, and queryset `update()/delete()` all raise. Admin shows money read-only. A mistake is fixed by a reversing row, never an edit.
+- **Same transaction:** a desk payment (cash/card/UPI) is written inside the booking's / membership's `transaction.atomic()`. If the booking fails (slot taken), the money row rolls back with it.
+- **Refunds:** cancelling a *paid* booking 24h+ ahead writes a negative row by the original method; court revenue nets to 0. Online refunds are recorded in the ledger; the actual money is returned from the Razorpay dashboard (limitation).
+- **Razorpay flow:** server creates an order (SDK) -> Checkout in the browser -> Razorpay returns payment_id + signature -> server checks `HMAC_SHA256(order_id|payment_id, key_secret)` with `hmac.compare_digest` -> records once. Only the public key id reaches the browser.
+- **Webhook** `/webhooks/razorpay/`: CSRF-exempt (Razorpay can't send our token) but protected by `HMAC_SHA256(raw_body, webhook_secret)`. Returns 200 for any correctly signed event so Razorpay stops retrying.
+- **Exactly once:** `mark_payment_captured` locks the Payment row and checks its status; `razorpay_payment_id` is unique. Callback + webhook + retries -> one ledger row (threaded test: 10 simultaneous captures -> 1 row). Wrong amount -> ignored.
+- If Razorpay is down or keys are missing, `OnlinePaymentUnavailable` -> the booking is kept as unpaid and staff can "Take payment" later.
+- Tests: 30 in finance (+ updates elsewhere): ledger rules, signatures, replays, strict-CSRF client, rollback, refunds, membership fees.

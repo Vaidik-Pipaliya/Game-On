@@ -34,7 +34,7 @@ class ScreenTestCase(Fixtures, TestCase):
 
     def booking_data(self, **overrides):
         data = {"court": self.court1.pk, "start": f"{self.day.isoformat()}T18:00", "member_phone": "",
-                "guest_name": "Asha", "guest_phone": "98765 00001"}
+                "guest_name": "Asha", "guest_phone": "98765 00001", "payment_method": "cash"}
         return {**data, **overrides}
 
 
@@ -127,7 +127,7 @@ class SocialScreenTests(ScreenTestCase):
         )
 
     def join(self, **data):
-        return self.client.post(reverse("social_join", args=[self.session.pk]), data, follow=True)
+        return self.client.post(reverse("social_join", args=[self.session.pk]), {"payment_method": "cash", **data}, follow=True)
 
     def test_page_lists_session_with_places_taken(self):
         self.assertContains(self.client.get(reverse("social_list")), "0 / 2")

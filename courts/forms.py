@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from accounts.forms import BootstrapFormMixin
+from finance.models import Method
+from finance.services import DESK_METHODS
 from members.services import find_member_by_phone, normalize_phone
 
 from .models import Court
@@ -54,9 +56,15 @@ class WhoForm(BootstrapFormMixin, forms.Form):
 class BookingForm(WhoForm):
     court = forms.ModelChoiceField(queryset=Court.objects.filter(is_active=True), widget=forms.HiddenInput)
     start = forms.CharField(widget=forms.HiddenInput)
+    payment_method = forms.ChoiceField(choices=Method.choices, initial=Method.CASH, label="Paid by",
+                                       help_text="Online opens Razorpay. Free sessions ignore this.")
 
     def clean_start(self):
         return parse_local_datetime(self.cleaned_data["start"])
+
+
+class SocialJoinForm(WhoForm):
+    payment_method = forms.ChoiceField(choices=[(m.value, m.label) for m in DESK_METHODS])
 
 
 class SocialCreateForm(BootstrapFormMixin, forms.Form):
