@@ -103,6 +103,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         today = timezone.localdate()
+        self.stdout.write("Loading plans, members, courts, shop, menu and leads (about a minute on a cloud database)...")
         plans = {}
         for name, fee, court_pct, free_hrs, shop_pct, bar_pct, junior in PLANS:
             plans[name], _ = Plan.objects.update_or_create(
@@ -163,9 +164,11 @@ class Command(BaseCommand):
                 },
             )
 
+        self.stdout.write("Basics done.")
         if already_seeded():
             self.stdout.write("Activity history already present; not adding it again.")
         else:
+            self.stdout.write("Building 30 days of history...")
             seed_activity(today)
             self.stdout.write("Added 30 days of bookings, sales, bar tabs, fees, payroll and invoices.")
         self.stdout.write(self.style.SUCCESS("Demo data loaded."))

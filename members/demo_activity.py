@@ -54,6 +54,11 @@ def already_seeded():
 
 @transaction.atomic
 def seed_activity(today, seed=42):
+    """Build 30 days of history in memory, then save it in a handful of batched inserts.
+
+    One INSERT per row would be ~3,900 round trips (minutes, and long enough for a cloud database
+    to drop the connection). Batching sends the same rows in a few dozen queries.
+    """
     rng = random.Random(seed)  # same data every time, so demos are repeatable
     members = list(Member.objects.prefetch_related("memberships__plan"))
     courts = list(Court.objects.filter(is_active=True))
@@ -61,13 +66,24 @@ def seed_activity(today, seed=42):
     menu = list(MenuItem.objects.all())
 
     _new_member_fees(today, rng)
+    court_rows, shop_rows, bar_rows = [], [], []
     for days_ago in range(30, 0, -1):
         day = today - timedelta(days=days_ago)
-        _court_day(day, courts, members, rng)
-        _shop_day(day, variants, members, rng)
-        _bar_day(day, menu, members, rng)
+        court_rows += _court_day(day, courts, members, rng)
+        shop_rows += _shop_day(day, variants, members, rng)
+        bar_rows += _bar_day(day, menu, members, rng)
+
+    ledger = _save_court_days(court_rows) + _save_shop_days(shop_rows) + _save_bar_days(bar_rows)
+    # Ledger rows are only ever inserted, so a bulk insert is safe (update/delete are what we forbid).
+    Ledger.objects.bulk_create(ledger, batch_size=500)
+
     _today_and_upcoming(today, courts, members, rng, variants, menu)
     _staff_and_invoices(today)
+
+
+def _payment_row(source, method, amount, reference_id, note, at):
+    return Ledger(kind=Ledger.Kind.PAYMENT, source=source, method=method, amount_paise=amount,
+                  reference_id=reference_id, note=f"{MARKER}: {note}", created_at=at)
 
 
 def _new_member_fees(today, rng):
@@ -85,8 +101,10 @@ def _new_member_fees(today, rng):
 
 
 def _court_day(day, courts, members, rng):
+    """Returns [(Booking, method, cancelled)] for one day; nothing is saved yet."""
     weekend = day.weekday() >= 5
     per_member = {}
+    rows = []
     for court in courts:
         for hour in _busy_hours(rng, rng.randint(4, 9) if weekend else rng.randint(3, 7)):
             start = _at(day, hour)
@@ -97,7 +115,7 @@ def _court_day(day, courts, members, rng):
             price = price_for("court", court.walk_in_rate_paise, membership, today=day).amount_paise
             method = rng.choice(METHODS) if price else ""
             cancelled = rng.random() < 0.03
-            booking = Booking.objects.create(
+            booking = Booking(
                 court=court, member=member, guest_name="" if member else "Walk-in guest",
                 guest_phone="" if member else "9000000000", start=start, end=start + timedelta(hours=1),
                 status=Booking.Status.CANCELLED if cancelled else Booking.Status.COMPLETED,
@@ -105,49 +123,91 @@ def _court_day(day, courts, members, rng):
             )
             if member:
                 per_member[member.pk] = per_member.get(member.pk, 0) + 1
-            if price:
-                record_payment(source="court", method=method, amount_paise=price, reference_id=booking.pk,
-                               note=f"{MARKER}: court booking", at=start - timedelta(days=1))
-                if cancelled:
-                    record_refund(source="court", method=method, amount_paise=price, reference_id=booking.pk,
-                                  note=f"{MARKER}: cancelled booking", at=start - timedelta(hours=30))
+            rows.append((booking, method, cancelled))
+    return rows
+
+
+def _save_court_days(rows):
+    Booking.objects.bulk_create([booking for booking, _, _ in rows], batch_size=500)  # sets each booking.pk
+    ledger = []
+    for booking, method, cancelled in rows:
+        if not booking.price_paise:
+            continue
+        ledger.append(_payment_row("court", method, booking.price_paise, booking.pk, "court booking",
+                                   booking.start - timedelta(days=1)))
+        if cancelled:
+            ledger.append(Ledger(kind=Ledger.Kind.REFUND, source="court", method=method, amount_paise=-booking.price_paise,
+                                 reference_id=booking.pk, note=f"{MARKER}: cancelled booking",
+                                 created_at=booking.start - timedelta(hours=30)))
+    return ledger
 
 
 def _shop_day(day, variants, members, rng):
+    """Returns [(Order, [(variant, quantity, unit_price)], when)]."""
+    rows = []
     for _ in range(rng.randint(1, 4)):
         when = _at(day, rng.randint(8, 20), rng.choice([0, 15, 30, 45]))
         member = rng.choice(members) if rng.random() < 0.5 else None
         membership = member.current_membership if member else None
         method = rng.choice(METHODS)
-        order = Order.objects.create(member=member, channel="counter", status="completed", is_paid=True, payment_method=method)
-        total = 0
+        lines, total = [], 0
         for variant in rng.sample(variants, rng.randint(1, 2)):
             quantity = rng.randint(1, 2)
             unit = price_for("shop", variant.product.price_paise, membership, today=day).amount_paise
-            OrderLine.objects.create(order=order, variant=variant, quantity=quantity, unit_price_paise=unit)
+            lines.append((variant, quantity, unit))
             total += unit * quantity
-        Order.objects.filter(pk=order.pk).update(total_paise=total, created_at=when)  # orders aren't append-only
-        record_payment(source="shop", method=method, amount_paise=total, reference_id=order.pk,
-                       note=f"{MARKER}: shop sale", at=when)
+        order = Order(member=member, channel="counter", status="completed", is_paid=True,
+                      payment_method=method, total_paise=total)
+        rows.append((order, lines, when))
+    return rows
+
+
+def _save_shop_days(rows):
+    orders = [order for order, _, _ in rows]
+    Order.objects.bulk_create(orders, batch_size=500)
+    OrderLine.objects.bulk_create(
+        [OrderLine(order=order, variant=v, quantity=q, unit_price_paise=u) for order, lines, _ in rows for v, q, u in lines],
+        batch_size=500,
+    )
+    for order, _, when in rows:
+        order.created_at = when  # auto_now_add stamps "now" on insert; set the historic time afterwards
+    Order.objects.bulk_update(orders, ["created_at"], batch_size=500)
+    return [_payment_row("shop", o.payment_method, o.total_paise, o.pk, "shop sale", when) for o, _, when in rows]
 
 
 def _bar_day(day, menu, members, rng):
+    """Returns [(Tab, [(menu_item, quantity)], opened, closed, method)]."""
     weekend = day.weekday() >= 5
+    rows = []
     for _ in range(rng.randint(6, 12) if weekend else rng.randint(3, 8)):
         opened = _at(day, rng.choice([8, 12, 13, 18, 19, 20, 21]), rng.choice([0, 20, 40]))
         member = rng.choice(members) if rng.random() < 0.6 else None
         membership = member.current_membership if member else None
-        tab = Tab.objects.create(member=member, customer_name="" if member else "Guest", status="paid")
-        subtotal = 0
+        lines, subtotal = [], 0
         for item in rng.sample(menu, rng.randint(1, 4)):
             quantity = rng.randint(1, 3)
-            TabLine.objects.create(tab=tab, menu_item=item, quantity=quantity, unit_price_paise=item.price_paise, progress="served")
+            lines.append((item, quantity))
             subtotal += item.price_paise * quantity
         total = price_for("bar", subtotal, membership, today=day).amount_paise
         closed = opened + timedelta(minutes=rng.randint(30, 120))
-        Tab.objects.filter(pk=tab.pk).update(opened_at=opened, closed_at=closed, total_paise=total, discount_paise=subtotal - total)
-        record_payment(source="bar", method=rng.choice(METHODS), amount_paise=total, reference_id=tab.pk,
-                       note=f"{MARKER}: bar tab", at=closed)
+        tab = Tab(member=member, customer_name="" if member else "Guest", status="paid",
+                  closed_at=closed, total_paise=total, discount_paise=subtotal - total)
+        rows.append((tab, lines, opened, closed, rng.choice(METHODS)))
+    return rows
+
+
+def _save_bar_days(rows):
+    tabs = [tab for tab, *_ in rows]
+    Tab.objects.bulk_create(tabs, batch_size=500)
+    TabLine.objects.bulk_create(
+        [TabLine(tab=tab, menu_item=item, quantity=q, unit_price_paise=item.price_paise, progress="served")
+         for tab, lines, *_ in rows for item, q in lines],
+        batch_size=500,
+    )
+    for tab, _, opened, *_ in rows:
+        tab.opened_at = opened
+    Tab.objects.bulk_update(tabs, ["opened_at"], batch_size=500)
+    return [_payment_row("bar", method, tab.total_paise, tab.pk, "bar tab", closed) for tab, _, _, closed, method in rows]
 
 
 def _today_and_upcoming(today, courts, members, rng, variants, menu):
