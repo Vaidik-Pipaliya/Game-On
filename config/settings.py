@@ -87,7 +87,8 @@ USE_TZ = True
 LOGIN_URL = "/login/"
 
 # Firebase: the service-account file stays on the server; the web config values are public by design.
-FIREBASE_CREDENTIALS_PATH = os.environ.get("FIREBASE_CREDENTIALS_PATH", str(BASE_DIR / "firebase-service-account.json"))
+# Relative paths are resolved from the project folder, so it works from any working directory.
+FIREBASE_CREDENTIALS_PATH = BASE_DIR / os.environ.get("FIREBASE_CREDENTIALS_PATH", "firebase-service-account.json")
 FIREBASE_WEB_API_KEY = os.environ.get("FIREBASE_WEB_API_KEY", "")
 FIREBASE_AUTH_DOMAIN = os.environ.get("FIREBASE_AUTH_DOMAIN", "")
 FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")

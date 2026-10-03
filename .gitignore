@@ -5,3 +5,5 @@ __pycache__/
 *.json.local
 firebase-service-account.json
 db.sqlite3
+
+*firebase-adminsdk*.json
