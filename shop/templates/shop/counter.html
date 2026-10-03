@@ -1,28 +1,33 @@
 {% extends "base.html" %}
-{% block title %}Counter sale{% endblock %}
+{% block title %}Counter sale | Champions Club{% endblock %}
 {% block content %}
-{% include "shop/_nav.html" %}
-<h1 class="h3 mb-3">Counter sale</h1>
-<form method="post" novalidate class="bg-white border rounded p-3 col-lg-8">
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">point_of_sale</span>Pro shop</div><h1 class="page-title">Counter sale</h1>
+    <p class="page-sub">Pick up to five items. A member's phone number applies their shop discount automatically.</p></div>
+</div>
+<form method="post" novalidate>
   {% csrf_token %}
-  {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
-  {{ lines.management_form }}
-  {% for row in lines %}
-    <div class="row g-2 mb-2">
-      <div class="col-9">{{ row.variant }}{% for e in row.variant.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
-      <div class="col-3">{{ row.quantity }}{% for e in row.quantity.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
-    </div>
-  {% endfor %}
-  <div class="row g-2 mt-2">
-    {% for field in form %}
-      <div class="col-md-6">
-        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {{ field }}
-        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-        {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="panel panel-pad">
+        {% if form.non_field_errors %}<div class="alert alert-danger" role="alert"><span class="msym">error</span> {% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+        <h2 class="panel-title mb-3"><span class="msym">shopping_basket</span>Items</h2>
+        {{ lines.management_form }}
+        {% for row in lines %}
+          <div class="row g-2 mb-2">
+            <div class="col-9">{{ row.variant }}{% for e in row.variant.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+            <div class="col-3">{{ row.quantity }}{% for e in row.quantity.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+          </div>
+        {% endfor %}
       </div>
-    {% endfor %}
+    </div>
+    <div class="col-lg-4">
+      <div class="panel panel-pad sticky-side">
+        <h2 class="panel-title mb-3"><span class="msym">receipt_long</span>Customer and payment</h2>
+        {% for field in form %}{% include "partials/field.html" with field=field %}{% endfor %}
+        <button class="btn btn-primary btn-lg w-100"><span class="msym">payments</span>Take payment</button>
+      </div>
+    </div>
   </div>
-  <button class="btn btn-primary mt-3">Take payment</button>
 </form>
 {% endblock %}

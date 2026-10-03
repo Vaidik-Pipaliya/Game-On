@@ -1,25 +1,38 @@
 {% extends "base.html" %}
-{% block title %}Register member{% endblock %}
+{% block title %}Register member | Champions Club{% endblock %}
 {% block content %}
-<div class="col-lg-6">
-  <h1 class="h3 mb-3">Register member</h1>
-  <form method="post" novalidate class="bg-white border rounded p-3">
-    {% csrf_token %}
-    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
-    {% for field in form %}
-      <div class="mb-3 {% if field.field.widget.input_type == 'checkbox' %}form-check{% endif %}">
-        {% if field.field.widget.input_type == 'checkbox' %}
-          {{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {% else %}
-          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-        {% endif %}
-        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-        {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-      </div>
-    {% endfor %}
-    <button class="btn btn-primary">Register member</button>
-    <a href="{% url 'member_search' %}" class="btn btn-link">Cancel</a>
-  </form>
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">person_add</span>Front desk</div><h1 class="page-title">Register member</h1>
+    <p class="page-sub">Sign someone up in under two minutes. Juniors (under 18) need an adult guardian who is already a member.</p></div>
+  <a href="{% url 'member_search' %}" class="btn btn-outline-secondary"><span class="msym">arrow_back</span>Members</a>
 </div>
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger" role="alert"><span class="msym">error</span> {% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="panel panel-pad mb-3">
+        <h2 class="panel-title mb-3"><span class="msym">person</span>Personal details</h2>
+        <div class="row">
+          <div class="col-md-6">{% include "partials/field.html" with field=form.full_name %}</div>
+          <div class="col-md-6">{% include "partials/field.html" with field=form.phone %}</div>
+          <div class="col-md-6">{% include "partials/field.html" with field=form.email %}</div>
+          <div class="col-md-6">{% include "partials/field.html" with field=form.date_of_birth %}</div>
+          <div class="col-12">{% include "partials/field.html" with field=form.emergency_contact %}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="panel panel-pad">
+        <h2 class="panel-title mb-3"><span class="msym">workspace_premium</span>Plan and fee</h2>
+        {% include "partials/field.html" with field=form.plan %}
+        {% include "partials/field.html" with field=form.guardian_phone %}
+        {% include "partials/field.html" with field=form.payment_method %}
+        {% include "partials/field.html" with field=form.whatsapp_opt_in %}
+        <button class="btn btn-primary btn-lg w-100"><span class="msym">check_circle</span>Register member</button>
+        <a href="{% url 'member_search' %}" class="btn btn-link w-100 mt-1">Cancel</a>
+      </div>
+    </div>
+  </div>
+</form>
 {% endblock %}

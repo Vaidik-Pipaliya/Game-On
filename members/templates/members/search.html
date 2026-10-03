@@ -1,31 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Members{% endblock %}
+{% block title %}Members | Champions Club{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h3 mb-0">Members</h1>
-  <a href="{% url 'member_new' %}" class="btn btn-primary">Register member</a>
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">badge</span>Club registry</div><h1 class="page-title">Members</h1>
+    <p class="page-sub">Find anyone by name or phone number to see their plan, status and history.</p></div>
+  <a href="{% url 'member_new' %}" class="btn btn-primary"><span class="msym">person_add</span>Register member</a>
 </div>
-<form method="get" class="mb-3">
-  <input type="search" name="q" value="{{ q }}" class="form-control form-control-lg" placeholder="Search by name or phone" autofocus>
+<form method="get" class="panel panel-pad mb-3" role="search">
+  <label class="visually-hidden" for="q">Search by name or phone</label>
+  <div class="input-group">
+    <span class="input-group-text bg-white"><span class="msym">search</span></span>
+    <input id="q" type="search" name="q" value="{{ q }}" class="form-control form-control-lg" placeholder="Search by name or phone" autofocus>
+    <button class="btn btn-primary">Search</button>
+  </div>
 </form>
-<div class="table-responsive bg-white border rounded">
-  <table class="table table-hover mb-0 align-middle">
-    <thead><tr><th>Name</th><th>Phone</th><th>Plan</th><th>Status</th><th>Ends</th></tr></thead>
-    <tbody>
-    {% for member in members %}
-      <tr>
-        <td><a href="{% url 'member_detail' member.pk %}">{{ member.full_name }}</a></td>
-        <td>{{ member.phone }}</td>
-        <td>{{ member.current_membership.plan.name|default:"-" }}</td>
-        <td>{% include "members/_status.html" with membership=member.current_membership %}</td>
-        <td>{{ member.current_membership.end_date|date:"j M Y"|default:"-" }}</td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="5" class="text-center text-muted py-4">
-        {% if q %}No member matches "{{ q }}". Check the spelling or register them.{% else %}No members yet. Register the first member.{% endif %}
-      </td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+<div class="panel">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead><tr><th>Name</th><th>Phone</th><th>Plan</th><th>Status</th><th>Ends</th></tr></thead>
+      <tbody>
+      {% for member in members %}
+        <tr>
+          <td><a href="{% url 'member_detail' member.pk %}" class="fw-semibold text-decoration-none">{{ member.full_name }}</a></td>
+          <td>{{ member.phone }}</td>
+          <td>{% with plan=member.current_membership.plan.name %}{% if plan %}<span class="chip chip-{{ plan|lower }}"><span class="dot dot-{{ plan|lower }}"></span>{{ plan }}</span>{% else %}-{% endif %}{% endwith %}</td>
+          <td>{% include "members/_status.html" with membership=member.current_membership %}</td>
+          <td>{{ member.current_membership.end_date|date:"j M Y"|default:"-" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4">
+          {% if q %}No member matches "{{ q }}". Check the spelling or register them.{% else %}No members yet. Register the first member.{% endif %}
+        </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

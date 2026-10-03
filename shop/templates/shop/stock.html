@@ -1,28 +1,33 @@
 {% extends "base.html" %}
-{% block title %}Stock{% endblock %}
+{% block title %}Stock | Champions Club{% endblock %}
 {% block content %}
-{% include "shop/_nav.html" %}
-<h1 class="h3 mb-1">Stock</h1>
-<p class="{% if low_count %}text-danger{% else %}text-muted{% endif %}">{{ low_count }} item{{ low_count|pluralize }} at or below the reorder level.</p>
-<div class="table-responsive bg-white border rounded">
-  <table class="table mb-0 align-middle">
-    <thead><tr><th>Item</th><th>Size</th><th class="text-end">In stock</th><th class="text-end">Reorder at</th><th>Status</th><th>Restock</th></tr></thead>
-    <tbody>
-    {% for v in variants %}
-      <tr>
-        <td>{{ v.product.name }}</td><td>{{ v.size }}</td>
-        <td class="text-end">{{ v.stock }}</td><td class="text-end">{{ v.reorder_level }}</td>
-        <td>{% if not v.stock %}<span class="badge bg-danger">Out of stock</span>{% elif v.is_low %}<span class="badge bg-warning text-dark">Low</span>{% else %}<span class="badge bg-success">OK</span>{% endif %}</td>
-        <td>
-          <form method="post" class="d-flex gap-1">{% csrf_token %}
-            <input type="hidden" name="variant" value="{{ v.pk }}">
-            <input type="number" name="quantity" min="1" class="form-control form-control-sm" style="width:5rem" aria-label="Quantity arrived">
-            <button class="btn btn-sm btn-outline-primary">Add</button>
-          </form>
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">inventory</span>Pro shop</div><h1 class="page-title">Stock</h1>
+    <p class="page-sub">Counter sales and online orders draw from this single shelf.</p></div>
+  {% if low_count %}<div class="callout callout-ball"><span class="msym">warning</span><strong>{{ low_count }} item{{ low_count|pluralize }}</strong> at or below the reorder level</div>
+  {% else %}<span class="chip chip-ok"><span class="msym">check_circle</span>Nothing is running low</span>{% endif %}
+</div>
+<div class="panel">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead><tr><th>Item</th><th>Size</th><th class="text-end">In stock</th><th class="text-end">Reorder at</th><th>Status</th><th>Restock</th></tr></thead>
+      <tbody>
+      {% for v in variants %}
+        <tr>
+          <td><strong>{{ v.product.name }}</strong></td><td>{{ v.size }}</td>
+          <td class="text-end"><strong>{{ v.stock }}</strong></td><td class="text-end">{{ v.reorder_level }}</td>
+          <td>{% if not v.stock %}<span class="badge bg-danger">Out of stock</span>{% elif v.is_low %}<span class="chip chip-ball">Low stock</span>{% else %}<span class="badge bg-success">OK</span>{% endif %}</td>
+          <td>
+            <form method="post" class="d-flex gap-1">{% csrf_token %}
+              <input type="hidden" name="variant" value="{{ v.pk }}">
+              <input type="number" name="quantity" min="1" class="form-control form-control-sm" style="width:5rem" aria-label="Quantity arrived">
+              <button class="btn btn-sm btn-outline-primary">Add</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

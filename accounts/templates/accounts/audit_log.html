@@ -1,13 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Audit log{% endblock %}
+{% block title %}Audit log | Champions Club{% endblock %}
 {% block content %}
-{% include "finance/_owner_nav.html" %}
-<h1 class="h3 mb-1">Audit log</h1>
-<p class="small text-muted">Who did what, for refunds, cancellations, stock changes, payroll, leave decisions and role changes. Entries can't be edited or deleted. Showing the latest 200.</p>
-<div class="d-flex flex-wrap gap-2 mb-3">
-  {% for value, label in groups %}<a class="btn btn-sm {% if prefix == value %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?action={{ value }}">{{ label }}</a>{% endfor %}
-</div>
-<div class="table-responsive bg-white border rounded">
+<div class="page-head"><div><div class="eyebrow mb-1"><span class="msym">history</span>Owner</div><h1 class="page-title">Audit log</h1>
+<p class="page-sub">Who did what, for refunds, cancellations, stock changes, payroll, leave decisions and role changes. Entries can't be edited or deleted. Showing the latest 200.</p></div></div>
+<div class="panel panel-pad mb-3"><div class="seg">
+  {% for value, label in groups %}<a class="{% if prefix == value %}active{% endif %}" href="?action={{ value }}">{{ label }}</a>{% endfor %}
+</div></div>
+<div class="panel"><div class="table-responsive">
   <table class="table mb-0 align-middle small">
     <thead><tr><th>When</th><th>Who</th><th>Action</th><th>What happened</th><th>Details</th></tr></thead>
     <tbody>
@@ -17,5 +16,5 @@
     {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Nothing logged yet. Refunds, stock changes and other sensitive actions appear here.</td></tr>{% endfor %}
     </tbody>
   </table>
-</div>
+</div></div>
 {% endblock %}

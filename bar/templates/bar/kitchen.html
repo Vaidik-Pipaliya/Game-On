@@ -1,24 +1,30 @@
 {% extends "base.html" %}
-{% block title %}{{ station|capfirst }} screen{% endblock %}
+{% block title %}{{ station|capfirst }} screen | Champions Club{% endblock %}
 {% block content %}
 {# Reload every 10 seconds so new orders appear without anyone touching the screen. #}
 <meta http-equiv="refresh" content="10">
-{% include "bar/_nav.html" %}
-<h1 class="h3">{{ station|capfirst }} screen <span class="small text-muted">updates every 10 seconds</span></h1>
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">skillet</span>Bar and cafe</div><h1 class="page-title">{{ station|capfirst }} screen</h1>
+    <p class="page-sub">Updates every 10 seconds.</p></div>
+  <div class="seg">
+    <a class="{% if station == 'kitchen' %}active{% endif %}" href="{% url 'bar_kitchen' %}?station=kitchen">Kitchen</a>
+    <a class="{% if station == 'bar' %}active{% endif %}" href="{% url 'bar_kitchen' %}?station=bar">Bar</a>
+  </div>
+</div>
 <div class="row g-3" aria-live="polite">
   {% for line in tickets %}
-  <div class="col-sm-6 col-lg-3">
-    <div class="bg-white border rounded p-3 h-100">
+  <div class="col-sm-6 col-lg-4 col-xl-3">
+    <div class="ticket">
       <div class="small text-muted">{{ line.ordered_at|date:"H:i" }} &middot; {% if line.tab.table %}{{ line.tab.table.label }}{% else %}Counter{% endif %} &middot; {{ line.tab.who }}</div>
-      <div class="fs-5 my-1"><strong>{{ line.quantity }} &times; {{ line.menu_item.name }}</strong></div>
+      <div class="fs-4 my-2 headline"><strong>{{ line.quantity }} &times; {{ line.menu_item.name }}</strong></div>
       <form method="post" action="{% url 'bar_ticket_ready' line.pk %}">{% csrf_token %}
         <input type="hidden" name="station" value="{{ station }}">
-        <button class="btn btn-success w-100">Ready</button>
+        <button class="btn btn-success w-100"><span class="msym">check</span>Ready</button>
       </form>
     </div>
   </div>
   {% empty %}
-  <p class="text-muted">No orders waiting.</p>
+  <div class="col-12"><div class="panel panel-pad text-center py-5"><div class="icon-badge mx-auto mb-3"><span class="msym">done_all</span></div><h2 class="h4">No orders waiting</h2></div></div>
   {% endfor %}
 </div>
 {% endblock %}

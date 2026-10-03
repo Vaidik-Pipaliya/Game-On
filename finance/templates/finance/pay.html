@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}Pay online{% endblock %}
+{% block title %}Pay online | Champions Club{% endblock %}
 {% block content %}
-<div class="col-md-5 mx-auto text-center">
-  <h1 class="h3">Pay {{ payment.amount_paise|rupees }}</h1>
-  <p class="text-muted">{{ payment.get_source_display }} #{{ payment.reference_id }} &middot; Razorpay test mode</p>
-  <button id="pay-btn" class="btn btn-primary btn-lg w-100">Pay {{ payment.amount_paise|rupees }} online</button>
-  <div id="pay-error" class="alert alert-danger mt-3 d-none" role="alert"></div>
+<div class="center-card panel panel-pad text-center">
+  <div class="icon-badge mx-auto mb-3"><span class="msym">credit_card</span></div>
+  <div class="eyebrow justify-content-center">{{ payment.get_source_display }} #{{ payment.reference_id }} &middot; Razorpay test mode</div>
+  <h1 class="page-title mt-1" style="text-transform:none">Pay {{ payment.amount_paise|rupees }}</h1>
+  <button id="pay-btn" class="btn btn-primary btn-lg w-100 mt-3"><span class="msym">lock</span>Pay {{ payment.amount_paise|rupees }} online</button>
+  <div id="pay-error" class="alert alert-danger mt-3 d-none text-start" role="alert"></div>
   <a href="{{ back_url }}" class="btn btn-link mt-2">Pay later instead</a>
 </div>
 {% csrf_token %}

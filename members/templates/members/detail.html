@@ -1,70 +1,86 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}{{ member.full_name }}{% endblock %}
+{% block title %}{{ member.full_name }} | Champions Club{% endblock %}
 {% block content %}
-<a href="{% url 'member_search' %}" class="small">&larr; All members</a>
-<div class="bg-white border rounded p-3 my-3 d-flex flex-wrap justify-content-between align-items-start gap-3">
-  <div>
-    <h1 class="h3 mb-1">{{ member.full_name }} {% include "members/_status.html" with membership=current %}</h1>
-    <div class="text-muted">
-      {{ member.phone }}{% if member.email %} &middot; {{ member.email }}{% endif %}
-      &middot; Born {{ member.date_of_birth|date:"j M Y" }}
+<a href="{% url 'member_search' %}" class="small text-decoration-none"><span class="msym">arrow_back</span> All members</a>
+
+{# Member header strip: a 4px rule in the tier colour, as in the design system #}
+<div class="panel member-head plan-{{ current.plan.name|lower }} my-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div class="d-flex gap-3">
+      <span class="avatar avatar-lg" aria-hidden="true">{{ member.full_name|slice:":1"|upper }}</span>
+      <div>
+        <h1 class="page-title mb-1" style="text-transform:none">{{ member.full_name }}</h1>
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+          {% if current %}<span class="chip chip-{{ current.plan.name|lower }}"><span class="dot dot-{{ current.plan.name|lower }}"></span>{{ current.plan.name }}</span>{% endif %}
+          {% include "members/_status.html" with membership=current %}
+          {% if current %}<span class="text-muted small">Ends {{ current.end_date|date:"j M Y" }}</span>{% endif %}
+        </div>
+        <div class="text-muted small">
+          <span class="msym">call</span> {{ member.phone }}{% if member.email %} &nbsp;&middot;&nbsp; <span class="msym">mail</span> {{ member.email }}{% endif %}
+          &nbsp;&middot;&nbsp; Born {{ member.date_of_birth|date:"j M Y" }}
+        </div>
+        {% if member.guardian %}<div class="small mt-1">Guardian: <a href="{% url 'member_detail' member.guardian.pk %}">{{ member.guardian.full_name }}</a></div>{% endif %}
+        {% if member.wards.exists %}<div class="small mt-1">Ward{{ member.wards.count|pluralize }}:
+          {% for ward in member.wards.all %}<a href="{% url 'member_detail' ward.pk %}">{{ ward.full_name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+        {% if member.emergency_contact %}<div class="small mt-1">Emergency contact: {{ member.emergency_contact }}</div>{% endif %}
+      </div>
     </div>
-    <div>Plan: <strong>{{ current.plan.name|default:"none" }}</strong>{% if current %} &middot; ends {{ current.end_date|date:"j M Y" }}{% endif %}</div>
-    {% if member.guardian %}<div>Guardian: <a href="{% url 'member_detail' member.guardian.pk %}">{{ member.guardian.full_name }}</a></div>{% endif %}
-    {% if member.wards.exists %}<div>Ward{{ member.wards.count|pluralize }}:
-      {% for ward in member.wards.all %}<a href="{% url 'member_detail' ward.pk %}">{{ ward.full_name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
-    {% if member.emergency_contact %}<div>Emergency contact: {{ member.emergency_contact }}</div>{% endif %}
+    {% if current %}
+    <form method="post" action="{% url 'member_renew' member.pk %}" class="renew-box">{% csrf_token %}
+      <div class="small text-muted mb-1">Fee {{ current.plan.price_paise|rupees }}</div>
+      <div class="d-flex gap-2 align-items-center">
+        <label class="visually-hidden" for="renew-method">Paid by</label>
+        <select id="renew-method" name="payment_method" class="form-select form-select-sm w-auto">
+          {% for m in desk_methods %}<option value="{{ m.value }}">{{ m.label }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-primary"><span class="msym">autorenew</span>Renew membership</button>
+      </div>
+    </form>
+    {% endif %}
   </div>
-  {% if current %}
-  <form method="post" action="{% url 'member_renew' member.pk %}" class="d-flex gap-2 align-items-center">{% csrf_token %}
-    <label class="small text-muted" for="renew-method">Fee {{ current.plan.price_paise|rupees }} paid by</label>
-    <select id="renew-method" name="payment_method" class="form-select form-select-sm w-auto">
-      {% for m in desk_methods %}<option value="{{ m.value }}">{{ m.label }}</option>{% endfor %}
-    </select>
-    <button class="btn btn-primary">Renew membership</button>
-  </form>
-  {% endif %}
 </div>
 
-<h2 class="h5">Memberships</h2>
-<table class="table bg-white border mb-4">
-  <thead><tr><th>Plan</th><th>From</th><th>To</th><th>Status</th></tr></thead>
-  <tbody>
-  {% for m in memberships %}
-    <tr><td>{{ m.plan.name }}</td><td>{{ m.start_date|date:"j M Y" }}</td><td>{{ m.end_date|date:"j M Y" }}</td>
-        <td>{% include "members/_status.html" with membership=m %}</td></tr>
-  {% empty %}<tr><td colspan="4" class="text-muted text-center">No memberships yet.</td></tr>{% endfor %}
-  </tbody>
-</table>
-
-<h2 class="h5">Court bookings</h2>
-<table class="table bg-white border mb-4">
-  <thead><tr><th>Court</th><th>When</th><th>Status</th><th class="text-end">Price</th></tr></thead>
-  <tbody>
-  {% for b in bookings %}
-    <tr><td>{{ b.court.name }}</td><td>{{ b.start|date:"j M Y, H:i" }}</td><td>{{ b.status }}</td><td class="text-end">{{ b.price_paise|rupees }}</td></tr>
-  {% empty %}<tr><td colspan="4" class="text-muted text-center">No bookings yet.</td></tr>{% endfor %}
-  </tbody>
-</table>
-
-<h2 class="h5">Shop orders</h2>
-<table class="table bg-white border mb-4">
-  <thead><tr><th>Date</th><th>Channel</th><th>Status</th></tr></thead>
-  <tbody>
-  {% for o in orders %}
-    <tr><td>{{ o.created_at|date:"j M Y, H:i" }}</td><td>{{ o.channel }}</td><td>{{ o.status }}</td></tr>
-  {% empty %}<tr><td colspan="3" class="text-muted text-center">No shop orders yet.</td></tr>{% endfor %}
-  </tbody>
-</table>
-
-<h2 class="h5">Bar tabs</h2>
-<table class="table bg-white border">
-  <thead><tr><th>Opened</th><th>Status</th></tr></thead>
-  <tbody>
-  {% for t in tabs %}
-    <tr><td>{{ t.opened_at|date:"j M Y, H:i" }}</td><td>{{ t.status }}</td></tr>
-  {% empty %}<tr><td colspan="2" class="text-muted text-center">No bar tabs yet.</td></tr>{% endfor %}
-  </tbody>
-</table>
+<div class="row g-3">
+  <div class="col-xl-6">
+    <div class="panel h-100"><div class="panel-head"><h2 class="panel-title"><span class="msym">workspace_premium</span>Memberships</h2></div>
+      <div class="table-responsive"><table class="table">
+        <thead><tr><th>Plan</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for m in memberships %}
+          <tr><td>{{ m.plan.name }}</td><td>{{ m.start_date|date:"j M Y" }}</td><td>{{ m.end_date|date:"j M Y" }}</td><td>{% include "members/_status.html" with membership=m %}</td></tr>
+        {% empty %}<tr><td colspan="4" class="text-muted text-center">No memberships yet.</td></tr>{% endfor %}
+        </tbody></table></div></div>
+  </div>
+  <div class="col-xl-6">
+    <div class="panel h-100"><div class="panel-head"><h2 class="panel-title"><span class="msym">sports_tennis</span>Court bookings</h2></div>
+      <div class="table-responsive"><table class="table">
+        <thead><tr><th>Court</th><th>When</th><th>Status</th><th class="text-end">Price</th></tr></thead>
+        <tbody>
+        {% for b in bookings %}
+          <tr><td>{{ b.court.name }}</td><td>{{ b.start|date:"j M Y, H:i" }}</td><td>{{ b.status|capfirst }}</td><td class="text-end">{{ b.price_paise|rupees }}</td></tr>
+        {% empty %}<tr><td colspan="4" class="text-muted text-center">No bookings yet.</td></tr>{% endfor %}
+        </tbody></table></div></div>
+  </div>
+  <div class="col-xl-6">
+    <div class="panel h-100"><div class="panel-head"><h2 class="panel-title"><span class="msym">storefront</span>Shop orders</h2></div>
+      <div class="table-responsive"><table class="table">
+        <thead><tr><th>Date</th><th>Channel</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for o in orders %}
+          <tr><td>{{ o.created_at|date:"j M Y, H:i" }}</td><td>{{ o.channel|capfirst }}</td><td>{{ o.status|capfirst }}</td></tr>
+        {% empty %}<tr><td colspan="3" class="text-muted text-center">No shop orders yet.</td></tr>{% endfor %}
+        </tbody></table></div></div>
+  </div>
+  <div class="col-xl-6">
+    <div class="panel h-100"><div class="panel-head"><h2 class="panel-title"><span class="msym">local_bar</span>Bar tabs</h2></div>
+      <div class="table-responsive"><table class="table">
+        <thead><tr><th>Opened</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for t in tabs %}
+          <tr><td>{{ t.opened_at|date:"j M Y, H:i" }}</td><td>{{ t.status|capfirst }}</td></tr>
+        {% empty %}<tr><td colspan="2" class="text-muted text-center">No bar tabs yet.</td></tr>{% endfor %}
+        </tbody></table></div></div>
+  </div>
+</div>
 {% endblock %}

@@ -1,35 +1,48 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}Bar tables{% endblock %}
+{% block title %}Bar tables | Champions Club{% endblock %}
 {% block content %}
-{% include "bar/_nav.html" %}
-<h1 class="h3 mb-3">Tables</h1>
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">local_bar</span>Bar and cafe</div><h1 class="page-title">Tables</h1>
+    <p class="page-sub">Tap a free table to open a tab, or an amber one to continue.</p></div>
+</div>
 <div class="row g-3 mb-4">
   {% for table, tab in table_rows %}
-  <div class="col-6 col-md-3 col-lg-2">
+  <div class="col-6 col-md-4 col-lg-3 col-xl-2">
     {% if tab %}
-      <a href="{% url 'bar_tab' tab.pk %}" class="d-block border rounded p-3 text-decoration-none text-dark" style="background:#fbefd9;min-height:96px">
-        <strong>{{ table.label }}</strong><br>
-        <span class="small">Tab open &middot; {{ tab.who }}</span>
+      <a href="{% url 'bar_tab' tab.pk %}" class="tile d-block text-center py-3" style="background:var(--ball-100);border-color:#ecdc8a;min-height:96px">
+        <strong>{{ table.label }}</strong>
+        <small>Tab open &middot; {{ tab.who }}</small>
       </a>
     {% else %}
-      <form method="post" action="{% url 'bar_tab_open' %}">{% csrf_token %}
+      <form method="post" action="{% url 'bar_tab_open' %}" class="h-100">{% csrf_token %}
         <input type="hidden" name="table" value="{{ table.pk }}">
-        <button class="w-100 border rounded p-3 bg-white text-start" style="min-height:96px">
-          <strong>{{ table.label }}</strong><br><span class="small text-muted">Free &middot; open tab</span>
+        <button class="tile w-100 d-block text-center py-3" style="min-height:96px">
+          <strong>{{ table.label }}</strong><small>Free &middot; open tab</small>
         </button>
       </form>
     {% endif %}
   </div>
   {% empty %}
-  <p class="text-muted">No tables yet. Add them in admin.</p>
+  <div class="col-12"><p class="text-muted">No tables yet. Add them in admin.</p></div>
   {% endfor %}
 </div>
 
-<h2 class="h5">Tabs without a table</h2>
-<ul>{% for tab in loose_tabs %}<li><a href="{% url 'bar_tab' tab.pk %}">#{{ tab.pk }} {{ tab.who }}</a></li>{% empty %}<li class="text-muted">None open.</li>{% endfor %}</ul>
-<form method="post" action="{% url 'bar_tab_open' %}" class="d-flex gap-2 col-md-6">{% csrf_token %}
-  <input name="customer_name" class="form-control" placeholder="Name for a tab at the counter" aria-label="Customer name">
-  <button class="btn btn-primary">Open tab</button>
-</form>
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="panel panel-pad h-100">
+      <h2 class="panel-title mb-2"><span class="msym">receipt</span>Tabs without a table</h2>
+      <ul class="mb-0">{% for tab in loose_tabs %}<li><a href="{% url 'bar_tab' tab.pk %}">#{{ tab.pk }} {{ tab.who }}</a></li>{% empty %}<li class="text-muted">None open.</li>{% endfor %}</ul>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <form method="post" action="{% url 'bar_tab_open' %}" class="panel panel-pad h-100">{% csrf_token %}
+      <h2 class="panel-title mb-2"><span class="msym">add_circle</span>Counter tab</h2>
+      <div class="d-flex gap-2">
+        <input name="customer_name" class="form-control" placeholder="Name for a tab at the counter" aria-label="Customer name">
+        <button class="btn btn-primary">Open tab</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

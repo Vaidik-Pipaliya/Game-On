@@ -1,9 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Leave approvals{% endblock %}
+{% block title %}Leave approvals | Champions Club{% endblock %}
 {% block content %}
-{% include "finance/_owner_nav.html" %}
-<h1 class="h3 mb-3">Leave requests</h1>
-<div class="table-responsive bg-white border rounded mb-4">
+<div class="page-head"><div><div class="eyebrow mb-1"><span class="msym">event_available</span>Owner</div><h1 class="page-title">Leave requests</h1></div></div>
+<div class="panel mb-4"><div class="table-responsive">
   <table class="table mb-0 align-middle">
     <thead><tr><th>Employee</th><th>From</th><th>To</th><th>Reason</th><th>Days left this year</th><th></th></tr></thead>
     <tbody>
@@ -16,7 +15,7 @@
     {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No requests waiting.</td></tr>{% endfor %}
     </tbody>
   </table>
-</div>
-<h2 class="h5">Recent decisions</h2>
+</div></div>
+<h2 class="panel-title mb-2">Recent decisions</h2>
 <ul class="small">{% for l in decided %}<li>{{ l.employee.full_name }}: {{ l.from_date|date:"j M" }} to {{ l.to_date|date:"j M" }}, {{ l.get_status_display }}{% if l.decided_by %} by {{ l.decided_by.email }}{% endif %}</li>{% empty %}<li class="text-muted">None yet.</li>{% endfor %}</ul>
 {% endblock %}

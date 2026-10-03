@@ -1,17 +1,19 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}Tab #{{ tab.pk }}{% endblock %}
+{% block title %}Tab #{{ tab.pk }} | Champions Club{% endblock %}
 {% block content %}
-{% include "bar/_nav.html" %}
-<h1 class="h3">Tab #{{ tab.pk }} &middot; {{ tab.who }}{% if tab.table %} &middot; {{ tab.table.label }}{% endif %}
-  <span class="badge {% if tab.status == 'open' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ tab.get_status_display }}</span></h1>
+<a href="{% url 'bar_tables' %}" class="small text-decoration-none"><span class="msym">arrow_back</span> Tables</a>
+<div class="page-head mt-1">
+  <div><h1 class="page-title">Tab #{{ tab.pk }} &middot; {{ tab.who }}{% if tab.table %} &middot; {{ tab.table.label }}{% endif %}</h1></div>
+  <span class="badge {% if tab.status == 'open' %}bg-warning{% else %}bg-secondary{% endif %}">{{ tab.get_status_display }}</span>
+</div>
 
 <div class="row g-4">
   {% if tab.status == "open" %}
   <div class="col-lg-7">
     {% for category, items in menu %}
-      <h2 class="h6 mt-3">{{ category }}</h2>
-      <div class="d-flex flex-wrap gap-2">
+      <div class="section-kicker">{{ category }}</div>
+      <div class="d-flex flex-wrap gap-2 mb-3">
         {% for item in items %}
           <form method="post" action="{% url 'bar_tab_action' tab.pk 'add' %}">{% csrf_token %}
             <input type="hidden" name="item" value="{{ item.pk }}">
@@ -25,8 +27,9 @@
   </div>
   {% endif %}
 
-  <div class="col-lg-5">
-    <div class="bg-white border rounded p-3">
+  <div class="{% if tab.status == 'open' %}col-lg-5{% else %}col-lg-6{% endif %}">
+    <div class="panel panel-pad sticky-side">
+      <h2 class="panel-title mb-2"><span class="msym">receipt_long</span>Bill</h2>
       <table class="table table-sm mb-2">
         <tbody>
         {% for line in lines %}
@@ -37,7 +40,7 @@
         <tfoot>
           <tr><th>Subtotal</th><th class="text-end">{{ bill.subtotal_paise|rupees }}</th></tr>
           {% if bill.discount_paise %}<tr class="text-success"><td>{{ bill.discount_label }}</td><td class="text-end">-{{ bill.discount_paise|rupees }}</td></tr>{% endif %}
-          <tr><th>Total</th><th class="text-end">{{ bill.total_paise|rupees }}</th></tr>
+          <tr><th class="fs-5">Total</th><th class="text-end fs-5">{{ bill.total_paise|rupees }}</th></tr>
         </tfoot>
       </table>
 
@@ -50,7 +53,7 @@
         {% endif %}
 
         <form method="post" action="{% url 'bar_tab_action' tab.pk 'settle' %}">{% csrf_token %}
-          <div class="small text-muted mb-1">Payment (split across up to 3 methods)</div>
+          <div class="eyebrow mb-1">Payment (split across up to 3 methods)</div>
           {% for i in "012" %}
           <div class="d-flex gap-2 mb-1">
             <select name="method_{{ i }}" class="form-select form-select-sm" aria-label="Method {{ forloop.counter }}">
@@ -60,7 +63,7 @@
                    {% if forloop.first %}value="{{ bill.total_paise|rupees_input }}"{% endif %}>
           </div>
           {% endfor %}
-          <button class="btn btn-primary w-100 mt-2">Take payment and close tab</button>
+          <button class="btn btn-primary btn-lg w-100 mt-2"><span class="msym">payments</span>Take payment and close tab</button>
         </form>
         {% if not lines %}
         <form method="post" action="{% url 'bar_tab_action' tab.pk 'void' %}" class="mt-2">{% csrf_token %}

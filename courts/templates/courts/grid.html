@@ -1,105 +1,132 @@
 {% extends "base.html" %}
-{% load money %}
-{% block title %}Court grid{% endblock %}
+{% load money static %}
+{% block title %}Court grid | Champions Club{% endblock %}
 {% block content %}
-<style>
-  .grid-wrap { overflow-x: auto; background: #fff; border: 1px solid #dee2e6; border-radius: .5rem; }
-  table.grid { border-collapse: separate; border-spacing: 0; font-size: .75rem; }
-  table.grid th, table.grid td { min-width: 34px; height: 34px; text-align: center; border: 1px solid #eef0f2; padding: 0; }
-  table.grid th.court-col, table.grid td.court-col { position: sticky; left: 0; background: #fff; min-width: 130px; text-align: left; padding: 0 .5rem; z-index: 1; }
-  td.free a { display: block; height: 100%; line-height: 34px; background: #e4ecf6; text-decoration: none; color: #17407a; }
-  td.free a:hover, td.free a:focus { background: #17407a; color: #fff; }
-  td.taken { background: #dfe3e8; color: #16202b; }
-  td.social { background: #e1eef7; color: #2b6c9e; }
-  td.past { background: #f4f6f9; }
-</style>
-
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-  <h1 class="h3 mb-0">Court grid</h1>
-  <div class="d-flex align-items-center gap-2">
-    <a class="btn btn-outline-secondary btn-sm" href="?date={{ prev_day|date:'Y-m-d' }}{% if sport %}&amp;sport={{ sport.pk }}{% endif %}">&larr;</a>
-    <strong>{{ day|date:"D j M Y" }}</strong>
-    <a class="btn btn-outline-secondary btn-sm" href="?date={{ next_day|date:'Y-m-d' }}{% if sport %}&amp;sport={{ sport.pk }}{% endif %}">&rarr;</a>
-    <a class="btn btn-link btn-sm" href="{% url 'booking_grid' %}">Today</a>
+<div class="page-head">
+  <div>
+    <div class="eyebrow mb-1"><span class="dot dot-live"></span>Court operations</div>
+    <h1 class="page-title">Court grid</h1>
+    <p class="page-sub">Each + starts a one-hour session at that time. Sessions can start every 30 minutes.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <form method="get" action="{% url 'member_search' %}" class="d-flex" role="search">
+      <label class="visually-hidden" for="member-q">Search members</label>
+      <input id="member-q" name="q" class="form-control" placeholder="Find a member: name or phone   ( / )" style="min-width:260px">
+    </form>
+    <a class="btn btn-outline-primary" href="{% url 'social_list' %}"><span class="msym">groups</span>Friday social play</a>
+    {% if can_owner %}<a class="btn btn-outline-secondary" href="{% url 'export_bookings' %}"><span class="msym">download</span>Export CSV</a>{% endif %}
   </div>
 </div>
 
-<div class="mb-3 d-flex flex-wrap gap-2">
-  <a class="btn btn-sm {% if not sport %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?date={{ day|date:'Y-m-d' }}">All sports</a>
-  {% for s in sports %}
-    <a class="btn btn-sm {% if sport == s %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?date={{ day|date:'Y-m-d' }}&amp;sport={{ s.pk }}">{{ s.name }}</a>
-  {% endfor %}
-  <a class="btn btn-sm btn-outline-secondary ms-auto" href="{% url 'social_list' %}">Friday social play</a>
+<div class="panel panel-pad mb-3">
+  <div class="d-flex flex-wrap align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <a class="btn btn-outline-secondary btn-sm" href="?date={{ prev_day|date:'Y-m-d' }}{% if sport %}&amp;sport={{ sport.pk }}{% endif %}"><span class="msym">chevron_left</span>Previous</a>
+      <strong class="fs-5 headline">{{ day|date:"D j M Y" }}</strong>
+      <a class="btn btn-outline-secondary btn-sm" href="?date={{ next_day|date:'Y-m-d' }}{% if sport %}&amp;sport={{ sport.pk }}{% endif %}">Next<span class="msym">chevron_right</span></a>
+      <a class="btn btn-link btn-sm" href="{% url 'booking_grid' %}">Today</a>
+    </div>
+    <div class="seg ms-lg-auto">
+      <a class="{% if not sport %}active{% endif %}" href="?date={{ day|date:'Y-m-d' }}">All courts</a>
+      {% for s in sports %}<a class="{% if sport == s %}active{% endif %}" href="?date={{ day|date:'Y-m-d' }}&amp;sport={{ s.pk }}">{{ s.name }}</a>{% endfor %}
+    </div>
+  </div>
+  <div class="legend mt-3">
+    <span><i style="background:var(--court-100)"></i>Free slot</span>
+    <span><i style="background:#fff;box-shadow:inset 3px 0 0 var(--court-700)"></i>Booked session</span>
+    <span><i style="background:var(--info-soft)"></i>Social play</span>
+    <span><i style="background:var(--ball-100)"></i>Held for payment</span>
+    <span><span class="dot" style="background:var(--court-700)"></span> Now</span>
+  </div>
 </div>
 
-<div class="grid-wrap mb-2">
-  <table class="grid">
-    <thead>
-      <tr>
-        <th class="court-col">Court</th>
-        {% for s in starts %}<th>{% if s.minute == 0 %}{{ s|date:"H" }}{% endif %}</th>{% endfor %}
-      </tr>
-    </thead>
-    <tbody>
-    {% for row in rows %}
-      <tr>
-        <td class="court-col">{{ row.court.name }}</td>
-        {% for cell in row.cells %}
-          {% if cell.state == "free" %}
-            <td class="free"><a href="{% url 'booking_new' %}?court={{ row.court.pk }}&amp;start={{ cell.start|date:'Y-m-d\TH:i' }}" aria-label="Book {{ row.court.name }} at {{ cell.start|date:'H:i' }}">+</a></td>
-          {% elif cell.state == "past" %}
-            <td class="past"></td>
-          {% else %}
-            <td class="{{ cell.state }}" title="{{ cell.booking.member.full_name|default:cell.booking.guest_name }} {{ cell.booking.start|date:'H:i' }}">
-              {% if cell.booking.start == cell.start %}{{ cell.booking.member.full_name|default:cell.booking.guest_name|truncatechars:4 }}{% endif %}
-            </td>
-          {% endif %}
-        {% endfor %}
-      </tr>
-    {% empty %}
-      <tr><td class="court-col">No courts yet.</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+<div class="panel mb-4">
+  <div class="panel-head"><h2 class="panel-title"><span class="msym">schedule</span>Master timeline &middot; 30-minute resolution</h2></div>
+  <div class="grid-wrap" style="border:0;border-radius:0 0 10px 10px">
+    <table class="cgrid">
+      <thead>
+        <tr>
+          <th class="court-col">Court</th>
+          {% for s in starts %}<th scope="col" data-start="{{ s|date:'c' }}">{{ s|date:"H:i" }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <th scope="row" class="court-col"><span class="cg-name">{{ row.court.name }}</span><span class="cg-sub">{{ row.court.sport.name }}</span></th>
+          {% for cell in row.cells %}
+            {% if cell.state == "free" %}
+              <td class="free"><a href="{% url 'booking_new' %}?court={{ row.court.pk }}&amp;start={{ cell.start|date:'Y-m-d\TH:i' }}" aria-label="Book {{ row.court.name }} at {{ cell.start|date:'H:i' }}">+</a></td>
+            {% elif cell.state == "past" %}
+              <td class="past"></td>
+            {% else %}
+              <td class="{{ cell.state }}" title="{{ cell.booking.member.full_name|default:cell.booking.guest_name }} {{ cell.booking.start|date:'H:i' }}">
+                {% if cell.booking.start == cell.start %}{{ cell.booking.member.full_name|default:cell.booking.guest_name|truncatechars:9 }}{% endif %}
+              </td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+      {% empty %}
+        <tr><td class="court-col">No courts yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
-<p class="small text-muted mb-4">Each + starts a one-hour session at that time. Sessions can start every 30 minutes. Light blue is a social session.</p>
 
-<h2 class="h5">Bookings on {{ day|date:"j M" }}</h2>
-<div class="table-responsive bg-white border rounded">
-  <table class="table mb-0 align-middle">
-    <thead><tr><th>Time</th><th>Court</th><th>Who</th><th>Type</th><th class="text-end">Price</th><th>Payment</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-    {% for b in bookings %}
-      <tr>
-        <td>{{ b.start|date:"H:i" }}</td>
-        <td>{{ b.court.name }}</td>
-        <td>{% if b.member %}<a href="{% url 'member_detail' b.member.pk %}">{{ b.member.full_name }}</a>{% else %}{{ b.guest_name }} <span class="text-muted">{{ b.guest_phone }}</span>{% endif %}</td>
-        <td>{% if b.kind == "social" %}Social seat{% else %}Whole court{% endif %}</td>
-        <td class="text-end">{{ b.price_paise|rupees }}</td>
-        <td>
-          {% if b.is_paid %}<span class="badge bg-success">Paid</span> <span class="small text-muted">{{ b.payment_method }}</span>
-          {% elif b.status == "confirmed" %}
-            <form method="post" action="{% url 'booking_pay' b.pk %}" class="d-flex gap-1">{% csrf_token %}
-              <select name="payment_method" class="form-select form-select-sm w-auto" aria-label="Payment method">
-                {% for value, label in methods %}<option value="{{ value }}"{% if value == b.payment_method %} selected{% endif %}>{{ label }}</option>{% endfor %}
-              </select>
-              <button class="btn btn-sm btn-outline-primary">Take payment</button>
+<div class="panel">
+  <div class="panel-head">
+    <h2 class="panel-title"><span class="msym">checklist</span>Operational manifest &middot; {{ day|date:"j M Y" }}</h2>
+    <span class="chip chip-primary">{{ bookings|length }} booking{{ bookings|length|pluralize }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead><tr><th>Time</th><th>Court</th><th>Player / member</th><th>Type</th><th class="text-end">Price</th><th>Payment</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for b in bookings %}
+        <tr>
+          <td><strong>{{ b.start|date:"H:i" }}</strong></td>
+          <td>{{ b.court.name }}</td>
+          <td>{% if b.member %}<a href="{% url 'member_detail' b.member.pk %}" class="fw-semibold text-decoration-none">{{ b.member.full_name }}</a>{% else %}<strong>{{ b.guest_name }}</strong> <span class="chip chip-neutral">Guest</span> <span class="text-muted small">{{ b.guest_phone }}</span>{% endif %}</td>
+          <td>{% if b.kind == "social" %}<span class="chip chip-info">Social seat</span>{% else %}Whole court{% endif %}</td>
+          <td class="text-end">{{ b.price_paise|rupees }}</td>
+          <td>
+            {% if b.is_paid %}<span class="badge bg-success"><span class="msym">check_circle</span>Paid</span> <span class="small text-muted">{{ b.payment_method }}</span>
+            {% elif b.status == "confirmed" %}
+              <form method="post" action="{% url 'booking_pay' b.pk %}" class="d-flex gap-1">{% csrf_token %}
+                <select name="payment_method" class="form-select form-select-sm w-auto" aria-label="Payment method">
+                  {% for value, label in methods %}<option value="{{ value }}"{% if value == b.payment_method %} selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+                <button class="btn btn-sm btn-primary">Take payment</button>
+              </form>
+            {% else %}<span class="chip chip-danger">Unpaid</span>{% endif %}
+          </td>
+          <td>{% if b.status == "confirmed" %}<span class="chip chip-primary">Confirmed</span>{% elif b.status == "held" %}<span class="badge bg-warning">Held</span>{% else %}<span class="chip chip-neutral">{{ b.status|capfirst }}</span>{% endif %}</td>
+          <td class="text-end">
+            {% if b.status == "confirmed" %}
+            <form method="post" action="{% url 'booking_cancel' b.pk %}" onsubmit="return confirm('Cancel this booking?');">{% csrf_token %}
+              <button class="btn btn-sm btn-outline-danger">Cancel</button>
             </form>
-          {% else %}<span class="small text-muted">Unpaid</span>{% endif %}
-        </td>
-        <td>{{ b.status|capfirst }}</td>
-        <td class="text-end">
-          {% if b.status == "confirmed" %}
-          <form method="post" action="{% url 'booking_cancel' b.pk %}" onsubmit="return confirm('Cancel this booking?');">{% csrf_token %}
-            <button class="btn btn-sm btn-outline-danger">Cancel</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="8" class="text-center text-muted py-4">No bookings on this day yet. Click a + in the grid to book a court.</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-4">No bookings on this day yet. Click a + in the grid to book a court.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'js/grid_now.js' %}"></script>
+<script>
+  // Press "/" anywhere to jump to the member search box.
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "/" && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      document.getElementById("member-q").focus();
+    }
+  });
+</script>
 {% endblock %}

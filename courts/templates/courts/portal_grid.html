@@ -1,44 +1,64 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Book a court | Champions Club{% endblock %}
 {% block content %}
-<style>
-  .pgrid-wrap { overflow-x: auto; background: #fff; border: 1px solid #dee2e6; border-radius: .5rem; }
-  table.pgrid { border-collapse: separate; border-spacing: 0; font-size: .8rem; }
-  table.pgrid th, table.pgrid td { min-width: 44px; height: 44px; text-align: center; border: 1px solid #eef0f2; padding: 0; }
-  table.pgrid th.court-col, table.pgrid td.court-col { position: sticky; left: 0; background: #fff; min-width: 110px; text-align: left; padding: 0 .5rem; z-index: 1; }
-  td.pfree a { display: block; line-height: 44px; background: #e4ecf6; color: #17407a; text-decoration: none; font-weight: 600; }
-  td.pfree a:hover, td.pfree a:focus { background: #17407a; color: #fff; }
-  td.ptaken, td.psocial { background: #dfe3e8; color: #6c757d; }
-  td.ppast { background: #f4f6f9; }
-</style>
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-  <h1 class="h3 mb-0">Book a court</h1>
-  <a href="{% url 'portal_mine' %}" class="btn btn-outline-primary btn-sm">My bookings</a>
+<div class="page-head">
+  <div>
+    <div class="eyebrow mb-1">
+      {% with m=member.current_membership %}{% if m %}<span class="dot dot-{{ m.plan.name|lower }}"></span>{{ m.plan.name }} member &middot; {{ m.plan.court_discount_pct }}% court privilege{% else %}Standard rates{% endif %}{% endwith %}
+      <span class="chip chip-primary ms-2">14-day window</span>
+    </div>
+    <h1 class="page-title">Hi {{ member.full_name }}. Tap a free time to see your price.</h1>
+    <p class="page-sub">Each session is one hour and starts every 30 minutes. A taken slot (&ndash;) can be waitlisted: tap it and we'll hold it for you if it opens up.</p>
+  </div>
+  <a href="{% url 'portal_mine' %}" class="btn btn-outline-primary"><span class="msym">calendar_month</span>My bookings</a>
 </div>
-<p class="text-muted small">Hi {{ member.full_name }}. Tap a free time to see your price. Each session is one hour and starts every 30 minutes. A taken slot (&ndash;) can be waitlisted: tap it and we'll hold it for you if it opens up.</p>
-<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-  {% if prev_day %}<a class="btn btn-sm btn-outline-secondary" href="?date={{ prev_day|date:'Y-m-d' }}{% if sport %}&amp;sport={{ sport.pk }}{% endif %}" aria-label="Previous day">&larr;</a>{% endif %}
-  <strong>{{ day|date:"D j M" }}</strong>
-  {% if next_day %}<a class="btn btn-sm btn-outline-secondary" href="?date={{ next_day|date:'Y-m-d' }}{% if sport %}&amp;sport={{ sport.pk }}{% endif %}" aria-label="Next day">&rarr;</a>{% endif %}
-  <span class="ms-3"></span>
-  <a class="btn btn-sm {% if not sport %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?date={{ day|date:'Y-m-d' }}">All sports</a>
-  {% for s in sports %}<a class="btn btn-sm {% if sport == s %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?date={{ day|date:'Y-m-d' }}&amp;sport={{ s.pk }}">{{ s.name }}</a>{% endfor %}
+
+<div class="panel panel-pad mb-3">
+  <div class="d-flex flex-wrap align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+      {% if prev_day %}<a class="btn btn-outline-secondary btn-sm" href="?date={{ prev_day|date:'Y-m-d' }}{% if sport %}&amp;sport={{ sport.pk }}{% endif %}" aria-label="Previous day"><span class="msym">chevron_left</span></a>{% endif %}
+      <strong class="fs-5 headline">{{ day|date:"D j M Y" }}</strong>
+      {% if next_day %}<a class="btn btn-outline-secondary btn-sm" href="?date={{ next_day|date:'Y-m-d' }}{% if sport %}&amp;sport={{ sport.pk }}{% endif %}" aria-label="Next day"><span class="msym">chevron_right</span></a>{% endif %}
+    </div>
+    <form method="get" class="d-flex gap-2 align-items-center">
+      {% if sport %}<input type="hidden" name="sport" value="{{ sport.pk }}">{% endif %}
+      <label class="visually-hidden" for="pick-date">Pick a date</label>
+      <input id="pick-date" type="date" name="date" value="{{ day|date:'Y-m-d' }}" class="form-control form-control-sm" style="width:auto">
+      <button class="btn btn-outline-secondary btn-sm">Go</button>
+    </form>
+    <div class="seg ms-lg-auto">
+      <a class="{% if not sport %}active{% endif %}" href="?date={{ day|date:'Y-m-d' }}">All sports</a>
+      {% for s in sports %}<a class="{% if sport == s %}active{% endif %}" href="?date={{ day|date:'Y-m-d' }}&amp;sport={{ s.pk }}">{{ s.name }}</a>{% endfor %}
+    </div>
+  </div>
+  <div class="legend mt-3">
+    <span><i style="background:var(--court-100)"></i>Free</span>
+    <span><i style="background:#fff;box-shadow:inset 3px 0 0 var(--court-700)"></i>Taken (tap to waitlist)</span>
+    <span><i style="background:#f6f7f9"></i>Past</span>
+    <span><span class="dot" style="background:var(--court-700)"></span> Now</span>
+  </div>
 </div>
-<div class="pgrid-wrap">
-  <table class="pgrid">
-    <thead><tr><th class="court-col">Court</th>{% for s in starts %}<th scope="col" class="lh-sm">{{ s|date:"g:i" }}<small class="d-block text-muted fw-normal">{{ s|date:"A" }}</small></th>{% endfor %}</tr></thead>
+
+<div class="grid-wrap">
+  <table class="cgrid" id="member-grid">
+    <thead><tr><th class="court-col">Court</th>{% for s in starts %}<th scope="col" data-start="{{ s|date:'c' }}">{{ s|date:"g:i" }}<small class="d-block">{{ s|date:"A" }}</small></th>{% endfor %}</tr></thead>
     <tbody>
     {% for row in rows %}
-      <tr><th scope="row" class="court-col fw-normal">{{ row.court.name }}</th>
-      {% for cell in row.cells %}
-        {% if cell.state == "free" %}
-          <td class="pfree"><a href="{% url 'portal_confirm' %}?court={{ row.court.pk }}&amp;start={{ cell.start|date:'Y-m-d\TH:i' }}" aria-label="Book {{ row.court.name }} at {{ cell.start|date:'g:i A' }}">Book</a></td>
-        {% elif cell.state == "past" %}<td class="ppast"></td>
-        {% else %}<td class="ptaken"><a href="{% url 'portal_waitlist_join' %}?court={{ row.court.pk }}&amp;start={{ cell.start|date:'Y-m-d\TH:i' }}" class="text-decoration-none text-muted d-block" style="line-height:44px" aria-label="Taken. Join the waitlist for {{ row.court.name }} at {{ cell.start|date:'g:i A' }}" title="Taken: join the waitlist">&ndash;</a></td>{% endif %}
-      {% endfor %}
+      <tr>
+        <th scope="row" class="court-col"><span class="cg-name">{{ row.court.name }}</span><span class="cg-sub">{{ row.court.sport.name }}</span></th>
+        {% for cell in row.cells %}
+          {% if cell.state == "free" %}
+            <td class="pfree"><a href="{% url 'portal_confirm' %}?court={{ row.court.pk }}&amp;start={{ cell.start|date:'Y-m-d\TH:i' }}" aria-label="Book {{ row.court.name }} at {{ cell.start|date:'g:i A' }}">Book</a></td>
+          {% elif cell.state == "past" %}<td class="ppast"></td>
+          {% else %}<td class="ptaken"><a href="{% url 'portal_waitlist_join' %}?court={{ row.court.pk }}&amp;start={{ cell.start|date:'Y-m-d\TH:i' }}" aria-label="Taken. Join the waitlist for {{ row.court.name }} at {{ cell.start|date:'g:i A' }}" title="Taken: join the waitlist">&ndash;</a></td>{% endif %}
+        {% endfor %}
       </tr>
-    {% empty %}<tr><td class="court-col">No courts.</td></tr>{% endfor %}
+    {% empty %}<tr><td class="court-col">No courts yet.</td></tr>{% endfor %}
     </tbody>
   </table>
 </div>
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'js/grid_now.js' %}"></script>
 {% endblock %}

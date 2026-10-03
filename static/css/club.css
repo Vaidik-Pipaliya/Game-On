@@ -360,3 +360,8 @@ table.cgrid { border-collapse: separate; border-spacing: 0; font-size: .75rem; w
 .center-card { max-width: 520px; margin: 2rem auto; }
 .icon-badge { width: 48px; height: 48px; border-radius: 10px; display: grid; place-items: center; background: var(--court-100); color: var(--court-700); font-size: 1.5rem; }
 .icon-badge.ok { background: var(--ok-soft); color: var(--ok); } .icon-badge.danger { background: var(--danger-soft); color: var(--danger); }
+
+/* ---------- Member header strip ---------- */
+.member-head { padding: 1.25rem 1.5rem; border-left: 4px solid var(--tier, var(--line)); }
+.avatar-lg { width: 56px; height: 56px; font-size: 1.25rem; background: var(--tier, var(--court-700)); }
+.renew-box { background: var(--court-100); border-radius: 10px; padding: .75rem 1rem; }

@@ -1,26 +1,25 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}Invoice {{ invoice.number }}{% endblock %}
-{% block head %}<style>@media print { nav, .no-print, .alert { display: none !important; } body { background: #fff !important; } }</style>{% endblock %}
+{% block title %}Invoice {{ invoice.number }} | Champions Club{% endblock %}
 {% block content %}
 <div class="no-print d-flex flex-wrap gap-2 mb-3">
-  <a href="{% url 'invoice_list' %}" class="btn btn-sm btn-link">&larr; Invoices</a>
-  <button onclick="window.print()" class="btn btn-sm btn-outline-secondary">Print or save as PDF</button>
+  <a href="{% url 'invoice_list' %}" class="btn btn-link"><span class="msym">arrow_back</span> Invoices</a>
+  <button onclick="window.print()" class="btn btn-outline-primary"><span class="msym">print</span>Print or save as PDF</button>
   {% if not invoice.is_paid %}
   <form method="post" class="d-flex gap-1 ms-auto">{% csrf_token %}
-    <select name="payment_method" class="form-select form-select-sm w-auto" aria-label="Paid by">
+    <select name="payment_method" class="form-select w-auto" aria-label="Paid by">
       {% for m in methods %}<option value="{{ m.value }}">{{ m.label }}</option>{% endfor %}
     </select>
-    <button class="btn btn-sm btn-primary">Mark paid</button>
+    <button class="btn btn-primary">Mark paid</button>
   </form>
   {% endif %}
 </div>
 
-<div class="bg-white border rounded p-4" style="max-width:780px">
+<div class="invoice-sheet">
   <div class="d-flex justify-content-between flex-wrap gap-3 mb-4">
     <div><h1 class="h4 mb-1">{{ club.name }}</h1><div class="small text-muted">{{ club.address }}<br>{{ club.phone }} &middot; {{ club.email }}</div></div>
     <div class="text-end"><div class="h5 mb-1">Tax invoice</div><div>{{ invoice.number }}</div><div class="small">{{ invoice.issued_on|date:"j M Y" }}</div>
-      <div class="mt-1">{% if invoice.is_paid %}<span class="badge bg-success">Paid ({{ invoice.paid_method }})</span>{% else %}<span class="badge bg-warning text-dark">Unpaid</span>{% endif %}</div></div>
+      <div class="mt-1">{% if invoice.is_paid %}<span class="badge bg-success">Paid ({{ invoice.paid_method }})</span>{% else %}<span class="badge bg-warning">Unpaid</span>{% endif %}</div></div>
   </div>
   <div class="mb-3"><div class="small text-muted">Bill to</div><strong>{{ invoice.customer_name }}</strong>{% if invoice.customer_gstin %}<div class="small">GSTIN {{ invoice.customer_gstin }}</div>{% endif %}</div>
   <table class="table" style="font-variant-numeric: tabular-nums">

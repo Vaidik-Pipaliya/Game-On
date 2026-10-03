@@ -1,5 +1,5 @@
 {% if membership %}
-  <span class="badge {% if membership.status == 'active' %}bg-success{% elif membership.status == 'expiring' %}bg-warning text-dark{% elif membership.status == 'expired' %}bg-danger{% else %}bg-secondary{% endif %}">
+  <span class="badge {% if membership.status == 'active' %}bg-success{% elif membership.status == 'expiring' %}bg-warning{% elif membership.status == 'expired' %}bg-danger{% else %}bg-secondary{% endif %}">
     {{ membership.status|capfirst }}{% if membership.status == 'expiring' %} ({{ membership.days_left }} day{{ membership.days_left|pluralize }}){% endif %}
   </span>
 {% else %}

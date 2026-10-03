@@ -1,18 +1,24 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}Friday social play{% endblock %}
+{% block title %}Friday social play | Champions Club{% endblock %}
 {% block content %}
-<a href="{% url 'booking_grid' %}" class="small">&larr; Court grid</a>
-<h1 class="h3 my-2">Friday social play</h1>
+<div class="page-head">
+  <div>
+    <div class="eyebrow mb-1"><span class="dot dot-live"></span>Community sessions</div>
+    <h1 class="page-title">Friday social play</h1>
+    <p class="page-sub">One court, many players. Each player pays their own share; places are limited.</p>
+  </div>
+  <a href="{% url 'booking_grid' %}" class="btn btn-outline-primary"><span class="msym">grid_view</span>Court grid</a>
+</div>
 
 {% if create_form %}
-<form method="post" action="{% url 'social_create' %}" class="bg-white border rounded p-3 mb-4">
+<form method="post" action="{% url 'social_create' %}" class="panel panel-pad mb-4">
   {% csrf_token %}
-  <h2 class="h6">Open a social session</h2>
-  <div class="row g-2 align-items-end">
+  <h2 class="panel-title mb-3"><span class="msym">add_circle</span>Open a social session</h2>
+  <div class="row g-3 align-items-end">
     {% for field in create_form %}
       <div class="col-md-3">
-        <label class="form-label small" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
         {{ field }}
       </div>
     {% endfor %}
@@ -22,39 +28,46 @@
 {% endif %}
 
 {% for session in sessions %}
-<div class="bg-white border rounded p-3 mb-3">
-  <div class="d-flex flex-wrap justify-content-between">
+<div class="panel mb-3">
+  <div class="panel-head">
     <div>
-      <strong>{{ session.court.name }}</strong> &middot; {{ session.start|date:"D j M, H:i" }}
-      &middot; {{ session.price_per_player_paise|rupees }} per player
+      <h2 class="panel-title">{{ session.court.name }}</h2>
+      <div class="text-muted small">{{ session.start|date:"D j M, H:i" }} &middot; {{ session.price_per_player_paise|rupees }} per player</div>
     </div>
-    <div class="{% if session.taken >= session.capacity %}text-danger{% endif %}">
+    <span class="chip {% if session.taken >= session.capacity %}chip-danger{% else %}chip-info{% endif %}">
       <strong>{{ session.taken }} / {{ session.capacity }}</strong> places taken{% if session.taken >= session.capacity %} (full){% endif %}
-    </div>
+    </span>
   </div>
-  {% if session.players %}
-  <ul class="small my-2">
-    {% for p in session.players %}
-      <li>{% if p.member %}<a href="{% url 'member_detail' p.member.pk %}">{{ p.member.full_name }}</a>{% else %}{{ p.guest_name }}{% endif %} &middot; {{ p.price_paise|rupees }}
-        <form method="post" action="{% url 'booking_cancel' p.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-link btn-sm p-0 text-danger">Remove</button></form>
-      </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-  <form method="post" action="{% url 'social_join' session.pk %}" class="row g-2 mt-1">
-    {% csrf_token %}
-    <div class="col-md-3"><input class="form-control form-control-sm" name="member_phone" placeholder="Member's phone"></div>
-    <div class="col-md-3"><input class="form-control form-control-sm" name="guest_name" placeholder="or guest name"></div>
-    <div class="col-md-2"><input class="form-control form-control-sm" name="guest_phone" placeholder="guest phone"></div>
-    <div class="col-md-2">
-      <select name="payment_method" class="form-select form-select-sm" aria-label="Paid by">
-        <option value="cash">Cash</option><option value="card">Card</option><option value="upi">UPI</option>
-      </select>
-    </div>
-    <div class="col-md-2"><button class="btn btn-sm btn-primary">Add player</button></div>
-  </form>
+  <div class="panel-pad pt-2">
+    {% if session.players %}
+    <ul class="list-unstyled mb-3">
+      {% for p in session.players %}
+        <li class="summary-row border-bottom align-items-center">
+          <span>{% if p.member %}<a href="{% url 'member_detail' p.member.pk %}" class="fw-semibold text-decoration-none">{{ p.member.full_name }}</a>{% else %}<strong>{{ p.guest_name }}</strong> <span class="chip chip-neutral">Guest</span>{% endif %} &middot; {{ p.price_paise|rupees }}</span>
+          <form method="post" action="{% url 'booking_cancel' p.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Remove</button></form>
+        </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <form method="post" action="{% url 'social_join' session.pk %}" class="row g-2">
+      {% csrf_token %}
+      <div class="col-md-3"><input class="form-control" name="member_phone" placeholder="Member's phone" aria-label="Member's phone"></div>
+      <div class="col-md-3"><input class="form-control" name="guest_name" placeholder="or guest name" aria-label="Guest name"></div>
+      <div class="col-md-2"><input class="form-control" name="guest_phone" placeholder="guest phone" aria-label="Guest phone"></div>
+      <div class="col-md-2">
+        <select name="payment_method" class="form-select" aria-label="Paid by">
+          <option value="cash">Cash</option><option value="card">Card</option><option value="upi">UPI</option>
+        </select>
+      </div>
+      <div class="col-md-2"><button class="btn btn-primary w-100"><span class="msym">person_add</span>Add player</button></div>
+    </form>
+  </div>
 </div>
 {% empty %}
-<p class="text-muted">No upcoming social sessions.{% if create_form %} Open one above.{% endif %}</p>
+<div class="panel panel-pad text-center py-5">
+  <div class="icon-badge mx-auto mb-3"><span class="msym">groups</span></div>
+  <h2 class="h4">No upcoming social sessions</h2>
+  <p class="text-muted mb-0">{% if create_form %}Open one above.{% else %}The owner opens sessions on Fridays.{% endif %}</p>
+</div>
 {% endfor %}
 {% endblock %}

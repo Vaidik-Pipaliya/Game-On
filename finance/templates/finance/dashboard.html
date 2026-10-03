@@ -1,26 +1,25 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}Owner dashboard{% endblock %}
+{% block title %}Owner dashboard | Champions Club{% endblock %}
 {% block content %}
-{% include "finance/_owner_nav.html" %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-  <h1 class="h3 mb-0">Owner dashboard <span class="small text-muted">{{ today|date:"j M Y" }}</span></h1>
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">monitoring</span>Owner</div><h1 class="page-title">Dashboard <span class="text-muted fs-6 fw-normal" style="text-transform:none">{{ today|date:"j M Y" }}</span></h1></div>
   <div class="d-flex gap-2">
-    <a class="btn btn-sm btn-outline-secondary" href="{% url 'export_ledger' %}">Export ledger CSV</a>
-    <a class="btn btn-sm btn-outline-secondary" href="{% url 'export_bookings' %}">Export bookings CSV</a>
+    <a class="btn btn-outline-primary" href="{% url 'export_ledger' %}"><span class="msym">download</span>Ledger CSV</a>
+    <a class="btn btn-outline-primary" href="{% url 'export_bookings' %}"><span class="msym">download</span>Bookings CSV</a>
   </div>
 </div>
 
 <div class="row g-3 mb-4">
   {% for key, label, s in summaries %}
   <div class="col-md-4">
-    <a href="?period={{ key }}" class="d-block bg-white border rounded p-3 text-decoration-none text-dark {% if key == period %}border-primary border-2{% endif %}">
-      <div class="small text-muted">{{ label }} revenue</div>
-      <div class="fs-3 fw-bold" style="font-variant-numeric: tabular-nums">{{ s.total|rupees }}</div>
-      <div class="small">
-        {% if s.change_pct is None %}<span class="text-muted">No sales in the previous period</span>
-        {% elif s.change_pct >= 0 %}<span class="text-success">&uarr; {{ s.change_pct }}%</span> vs {{ s.previous_total|rupees }} before
-        {% else %}<span class="text-danger">&darr; {{ s.change_pct }}%</span> vs {{ s.previous_total|rupees }} before{% endif %}
+    <a href="?period={{ key }}" class="kpi {% if key == period %}is-active{% endif %}">
+      <div class="kpi-label">{{ label }} revenue</div>
+      <div class="kpi-value">{{ s.total|rupees }}</div>
+      <div class="kpi-sub">
+        {% if s.change_pct is None %}No sales in the previous period
+        {% elif s.change_pct >= 0 %}<span class="text-success fw-bold">&uarr; {{ s.change_pct }}%</span> vs {{ s.previous_total|rupees }} before
+        {% else %}<span class="text-danger fw-bold">&darr; {{ s.change_pct }}%</span> vs {{ s.previous_total|rupees }} before{% endif %}
       </div>
     </a>
   </div>
@@ -29,22 +28,24 @@
 
 <div class="row g-4 mb-4">
   <div class="col-lg-8">
-    <h2 class="h5">Where the money came from: {% for key, label in periods %}{% if key == period %}{{ label|lower }}{% endif %}{% endfor %}</h2>
-    <div class="table-responsive bg-white border rounded">
-      <table class="table mb-0" style="font-variant-numeric: tabular-nums">
-        <thead><tr><th>Source</th>{% for value, label in methods %}<th class="text-end">{{ label }}</th>{% endfor %}<th class="text-end">Total</th></tr></thead>
-        <tbody>
-        {% for label, cells, total in matrix_rows %}
-          <tr><td>{{ label }}</td>{% for c in cells %}<td class="text-end">{{ c|rupees }}</td>{% endfor %}<td class="text-end fw-bold">{{ total|rupees }}</td></tr>
-        {% endfor %}
-        </tbody>
-        <tfoot><tr><th>Total</th>{% for t in method_totals %}<th class="text-end">{{ t|rupees }}</th>{% endfor %}<th class="text-end">{{ selected.total|rupees }}</th></tr></tfoot>
-      </table>
+    <h2 class="panel-title mb-2">Where the money came from: {% for key, label in periods %}{% if key == period %}{{ label|lower }}{% endif %}{% endfor %}</h2>
+    <div class="panel">
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Source</th>{% for value, label in methods %}<th class="text-end">{{ label }}</th>{% endfor %}<th class="text-end">Total</th></tr></thead>
+          <tbody>
+          {% for label, cells, total in matrix_rows %}
+            <tr><td>{{ label }}</td>{% for c in cells %}<td class="text-end">{{ c|rupees }}</td>{% endfor %}<td class="text-end fw-bold">{{ total|rupees }}</td></tr>
+          {% endfor %}
+          </tbody>
+          <tfoot><tr><th>Total</th>{% for t in method_totals %}<th class="text-end">{{ t|rupees }}</th>{% endfor %}<th class="text-end">{{ selected.total|rupees }}</th></tr></tfoot>
+        </table>
+      </div>
     </div>
     <p class="small text-muted mt-1">Net of refunds. Every figure is a sum of the ledger, the same rows the daily close reports use.</p>
   </div>
   <div class="col-lg-4">
-    <h2 class="h5">What we are owed</h2>
+    <h2 class="panel-title mb-2">What we are owed</h2>
     <ul class="list-group mb-2">
       {% for label, pair in owed.items.items %}
         <li class="list-group-item d-flex justify-content-between"><span>{{ label }} <span class="text-muted small">({{ pair.0 }})</span></span><span>{{ pair.1|rupees }}</span></li>
@@ -62,9 +63,9 @@
 </div>
 
 <div class="row g-4">
-  <div class="col-lg-12"><div class="bg-white border rounded p-3"><h2 class="h6">Revenue, last 30 days (₹)</h2><canvas id="trend" height="80"></canvas></div></div>
-  <div class="col-lg-6"><div class="bg-white border rounded p-3"><h2 class="h6">Court utilisation, last 30 days (% of open hours)</h2><canvas id="utilisation"></canvas></div></div>
-  <div class="col-lg-6"><div class="bg-white border rounded p-3"><h2 class="h6">Peak hours (sessions started), last 30 days</h2><canvas id="peaks"></canvas></div></div>
+  <div class="col-lg-12"><div class="panel panel-pad"><h2 class="panel-title mb-2">Revenue, last 30 days (₹)</h2><canvas id="trend" height="80"></canvas></div></div>
+  <div class="col-lg-6"><div class="panel panel-pad"><h2 class="panel-title mb-2">Court utilisation, last 30 days (% of open hours)</h2><canvas id="utilisation"></canvas></div></div>
+  <div class="col-lg-6"><div class="panel panel-pad"><h2 class="panel-title mb-2">Peak hours (sessions started), last 30 days</h2><canvas id="peaks"></canvas></div></div>
 </div>
 {{ charts|json_script:"chart-data" }}
 {% endblock %}

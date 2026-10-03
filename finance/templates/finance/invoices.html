@@ -1,37 +1,29 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}Invoices{% endblock %}
+{% block title %}Invoices | Champions Club{% endblock %}
 {% block content %}
-{% include "finance/_owner_nav.html" %}
-<h1 class="h3 mb-3">Invoices</h1>
+<div class="page-head"><div><div class="eyebrow mb-1"><span class="msym">receipt_long</span>Owner</div><h1 class="page-title">Invoices</h1></div></div>
 <div class="row g-4">
   <div class="col-lg-7">
-    <div class="table-responsive bg-white border rounded">
-      <table class="table mb-0 align-middle">
+    <div class="panel"><div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
         <thead><tr><th>Number</th><th>Date</th><th>Customer</th><th class="text-end">Total incl. GST</th><th>Status</th></tr></thead>
         <tbody>
         {% for i in invoices %}
           <tr><td><a href="{% url 'invoice_detail' i.pk %}">{{ i.number }}</a></td><td>{{ i.issued_on|date:"j M Y" }}</td><td>{{ i.customer_name }}</td>
               <td class="text-end">{{ i.total_paise|rupees }}</td>
-              <td>{% if i.is_paid %}<span class="badge bg-success">Paid</span>{% else %}<span class="badge bg-warning text-dark">Unpaid</span>{% endif %}</td></tr>
+              <td>{% if i.is_paid %}<span class="badge bg-success">Paid</span>{% else %}<span class="badge bg-warning">Unpaid</span>{% endif %}</td></tr>
         {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No invoices yet. Create the first one.</td></tr>{% endfor %}
         </tbody>
       </table>
-    </div>
+    </div></div>
   </div>
   <div class="col-lg-5">
-    <form method="post" novalidate class="bg-white border rounded p-3">
+    <form method="post" novalidate class="panel panel-pad">
       {% csrf_token %}
-      <h2 class="h6">New invoice</h2>
+      <h2 class="panel-title mb-3"><span class="msym">add_circle</span>New invoice</h2>
       {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
-      {% for field in form %}
-        <div class="mb-2">
-          <label class="form-label small" for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-          {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-        </div>
-      {% endfor %}
+      {% for field in form %}{% include "partials/field.html" with field=field %}{% endfor %}
       <button class="btn btn-primary">Create invoice</button>
     </form>
   </div>

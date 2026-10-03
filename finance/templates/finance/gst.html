@@ -1,18 +1,17 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}GST summary{% endblock %}
+{% block title %}GST summary | Champions Club{% endblock %}
 {% block content %}
-{% include "finance/_owner_nav.html" %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-  <h1 class="h3 mb-0">GST summary &middot; {{ month|date:"F Y" }}</h1>
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">account_balance</span>Owner</div><h1 class="page-title">GST summary &middot; {{ month|date:"F Y" }}</h1></div>
   <form class="d-flex gap-2">
-    <input type="month" name="month" value="{{ month|date:'Y-m' }}" class="form-control form-control-sm" aria-label="Month">
-    <button class="btn btn-sm btn-outline-primary">Show</button>
-    <a class="btn btn-sm btn-outline-secondary" href="?month={{ month|date:'Y-m' }}&amp;format=csv">CSV</a>
+    <input type="month" name="month" value="{{ month|date:'Y-m' }}" class="form-control" aria-label="Month">
+    <button class="btn btn-outline-primary">Show</button>
+    <a class="btn btn-outline-primary" href="?month={{ month|date:'Y-m' }}&amp;format=csv">CSV</a>
   </form>
 </div>
-<div class="table-responsive bg-white border rounded">
-  <table class="table mb-0" style="font-variant-numeric: tabular-nums">
+<div class="panel"><div class="table-responsive">
+  <table class="table mb-0">
     <thead><tr><th>GST rate</th><th class="text-end">Invoices</th><th class="text-end">Taxable value</th><th class="text-end">CGST</th><th class="text-end">SGST</th><th class="text-end">Total</th></tr></thead>
     <tbody>
     {% for r in rows %}
@@ -21,6 +20,6 @@
     </tbody>
     {% if rows %}<tfoot><tr><th>Total</th><th class="text-end">{{ totals.count }}</th><th class="text-end">{{ totals.taxable|rupees }}</th><th class="text-end">{{ totals.cgst|rupees }}</th><th class="text-end">{{ totals.sgst|rupees }}</th><th class="text-end">{{ totals.total|rupees }}</th></tr></tfoot>{% endif %}
   </table>
-</div>
+</div></div>
 <p class="small text-muted mt-2">Tax payable for the month = CGST + SGST = <strong>{{ totals.cgst|add:totals.sgst|rupees }}</strong>. Based on invoices issued; filing returns is done outside this system.</p>
 {% endblock %}

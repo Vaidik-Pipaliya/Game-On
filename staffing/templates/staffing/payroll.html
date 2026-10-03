@@ -1,18 +1,17 @@
 {% extends "base.html" %}
 {% load money %}
-{% block title %}Payroll{% endblock %}
+{% block title %}Payroll | Champions Club{% endblock %}
 {% block content %}
-{% include "finance/_owner_nav.html" %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-  <h1 class="h3 mb-0">Payroll &middot; {{ month|date:"F Y" }}</h1>
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">payments</span>Owner</div><h1 class="page-title">Payroll &middot; {{ month|date:"F Y" }}</h1></div>
   <div class="d-flex gap-2">
-    <form class="d-flex gap-2"><input type="month" name="month" value="{{ month|date:'Y-m' }}" class="form-control form-control-sm" aria-label="Month"><button class="btn btn-sm btn-outline-primary">Show</button></form>
-    <form method="post">{% csrf_token %}<input type="hidden" name="month" value="{{ month|date:'Y-m' }}"><button class="btn btn-sm btn-primary">Run payroll</button></form>
+    <form class="d-flex gap-2"><input type="month" name="month" value="{{ month|date:'Y-m' }}" class="form-control" aria-label="Month"><button class="btn btn-outline-primary">Show</button></form>
+    <form method="post">{% csrf_token %}<input type="hidden" name="month" value="{{ month|date:'Y-m' }}"><button class="btn btn-primary">Run payroll</button></form>
   </div>
 </div>
 <p class="small text-muted">Gross = monthly salary; flat {{ deduction_pct }}% deduction; net = gross - deduction. Running it again never creates duplicates. Unpaid salaries this month: <strong>{{ unpaid|rupees }}</strong>.</p>
-<div class="table-responsive bg-white border rounded">
-  <table class="table mb-0 align-middle" style="font-variant-numeric: tabular-nums">
+<div class="panel"><div class="table-responsive">
+  <table class="table mb-0 align-middle">
     <thead><tr><th>Employee</th><th>Role</th><th class="text-end">Gross</th><th class="text-end">Deduction</th><th class="text-end">Net</th><th></th></tr></thead>
     <tbody>
     {% for p in rows %}
@@ -24,5 +23,5 @@
     </tbody>
     {% if rows %}<tfoot><tr><th colspan="2">Total</th><th class="text-end">{{ totals.gross|rupees }}</th><th class="text-end">{{ totals.deduction|rupees }}</th><th class="text-end">{{ totals.net|rupees }}</th><th></th></tr></tfoot>{% endif %}
   </table>
-</div>
+</div></div>
 {% endblock %}

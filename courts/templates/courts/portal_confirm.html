@@ -2,35 +2,52 @@
 {% load money %}
 {% block title %}Confirm your booking | Champions Club{% endblock %}
 {% block content %}
-<div class="col-lg-5 mx-auto">
-  <h1 class="h3 mb-3">Confirm your booking</h1>
-  {% if error %}<div class="alert alert-danger" role="alert" aria-live="polite">{{ error }} <a href="{% url 'portal_grid' %}">Pick another time</a>.</div>{% endif %}
-  <div class="bg-white border rounded p-3 mb-3">
-    <div class="h5 mb-1">{{ court.name }} <span class="text-muted">&middot; {{ court.sport.name }}</span></div>
-    <div>{{ start|date:"l j F" }}, {{ start|date:"g:i A" }} to {{ start|date:"g:i A" }}<span class="text-muted"> (one hour)</span></div>
-    <hr>
-    <div class="d-flex justify-content-between align-items-baseline">
-      <span>Your price</span>
-      <span class="fs-4 fw-bold">{% if price.kind == "free" %}Free{% else %}{{ price.amount_paise|rupees }}{% endif %}</span>
+<div class="center-card" style="max-width:620px">
+  <div class="page-head mb-3"><div><h1 class="page-title">Confirm your booking</h1></div>
+    <a href="{% url 'portal_grid' %}" class="btn btn-outline-secondary btn-sm"><span class="msym">arrow_back</span>Back to the grid</a></div>
+
+  {% if error %}<div class="alert alert-danger" role="alert" aria-live="polite"><span class="msym">error</span> <strong>{{ error }}</strong> <a href="{% url 'portal_grid' %}">Pick another time</a>.</div>{% endif %}
+
+  <div class="panel panel-pad mb-3">
+    <div class="d-flex justify-content-between align-items-start gap-2">
+      <div class="eyebrow"><span class="msym">sports_tennis</span>Court reservation</div>
+      <span class="chip chip-primary">One hour</span>
     </div>
-    <div class="small text-muted">
-      {% if price.kind == "free" %}Uses one of your free hours this month.
-      {% elif price.kind == "member" and price.discount_pct %}Includes your {{ price.discount_pct }}% member discount.
-      {% else %}Standard price.{% endif %}
+    <h2 class="h3 mt-2 mb-1">{{ court.name }}</h2>
+    <div class="text-muted mb-3">{{ court.sport.name }}</div>
+    <div class="d-flex align-items-center gap-2 mb-1"><span class="msym text-muted">calendar_month</span><strong>{{ start|date:"l j F Y" }}</strong></div>
+    <div class="d-flex align-items-center gap-2"><span class="msym text-muted">schedule</span><strong>{{ start|date:"g:i A" }}</strong> <span class="text-muted">for one hour</span></div>
+  </div>
+
+  <div class="panel panel-pad mb-3">
+    <div class="eyebrow mb-2">Price breakdown</div>
+    <div class="summary-row"><span>Standard rate (one hour)</span><span>{{ court.walk_in_rate_paise|rupees }}</span></div>
+    {% if price.kind == "free" %}
+      <div class="summary-row text-success"><span>Free hour from your plan</span><span>included</span></div>
+    {% elif price.kind == "member" and price.discount_pct %}
+      <div class="summary-row text-success"><span>Your member discount</span><span>&minus;{{ price.discount_pct }}%</span></div>
+    {% endif %}
+    <div class="summary mt-2">
+      <div class="summary-total"><span>Total due</span><span>{% if price.kind == "free" %}Free{% else %}{{ price.amount_paise|rupees }}{% endif %}</span></div>
+      <div class="small text-muted mt-1">
+        {% if price.kind == "free" %}Uses one of your free hours this month.
+        {% elif price.kind == "member" and price.discount_pct %}Includes your {{ price.discount_pct }}% member discount.
+        {% else %}Standard price.{% endif %}
+      </div>
     </div>
   </div>
+
   <form method="post">
     {% csrf_token %}
     <input type="hidden" name="court" value="{{ court.pk }}">
     <input type="hidden" name="start" value="{{ raw_start }}">
     {% if price.amount_paise %}
-      <button name="payment" value="online" class="btn btn-primary btn-lg w-100 mb-2">Pay {{ price.amount_paise|rupees }} online now</button>
-      <div class="small text-muted mb-3">We hold your slot for {{ hold_minutes }} minutes while you pay.</div>
-      <button name="payment" value="club" class="btn btn-outline-primary w-100">Book now, pay at the club</button>
+      <button name="payment" value="online" class="btn btn-primary btn-lg w-100 mb-2"><span class="msym">credit_card</span>Pay {{ price.amount_paise|rupees }} online now</button>
+      <div class="small text-muted text-center mb-3"><span class="msym">timer</span> We hold your slot for {{ hold_minutes }} minutes while you pay.</div>
+      <button name="payment" value="club" class="btn btn-outline-primary w-100"><span class="msym">storefront</span>Book now, pay at the club</button>
     {% else %}
-      <button name="payment" value="club" class="btn btn-primary btn-lg w-100">Confirm free session</button>
+      <button name="payment" value="club" class="btn btn-primary btn-lg w-100"><span class="msym">check_circle</span>Confirm free session</button>
     {% endif %}
-    <a href="{% url 'portal_grid' %}" class="btn btn-link w-100 mt-2">Back to the grid</a>
   </form>
 </div>
 {% endblock %}

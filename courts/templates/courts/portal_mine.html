@@ -2,56 +2,69 @@
 {% load money %}
 {% block title %}My bookings | Champions Club{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h3 mb-0">My bookings</h1>
-  <a href="{% url 'portal_grid' %}" class="btn btn-primary">Book a court</a>
+<div class="page-head">
+  <div><h1 class="page-title">My bookings</h1><p class="page-sub">Manage your upcoming sessions, held slots and waitlist.</p></div>
+  <a href="{% url 'portal_grid' %}" class="btn btn-primary"><span class="msym">add</span>Book a court</a>
 </div>
 
-<h2 class="h5">Coming up</h2>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-label">Active</div><div class="kpi-value">{{ upcoming|length }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-label">Waitlist</div><div class="kpi-value">{{ waiting|length }}</div></div></div>
+</div>
+
+<h2 class="panel-title mb-2"><span class="dot dot-ok"></span>Coming up</h2>
 {% for b in upcoming %}
-<div class="bg-white border rounded p-3 mb-2">
-  <div class="d-flex flex-wrap justify-content-between gap-2">
+<div class="panel panel-pad mb-3 {% if b.status == 'held' %}border-warning{% endif %}">
+  <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
     <div>
-      <strong>{{ b.court.name }}</strong> &middot; {{ b.start|date:"D j M, g:i A" }}
-      <div class="small">
-        {% if b.price_paise %}{{ b.price_paise|rupees }}{% else %}Free{% endif %} &middot;
-        {% if b.status == "held" %}<span class="badge bg-warning text-dark">Held for you until {{ b.hold_expires_at|date:"g:i A" }}: confirm to keep it</span>
-        {% elif b.is_paid %}<span class="badge bg-success">Paid</span>
-        {% else %}<span class="badge bg-secondary">Pay at the club</span>{% endif %}
-      </div>
+      <h3 class="h4 mb-0">{{ b.court.name }}</h3>
+      <div class="text-muted">{{ b.start|date:"D j M, g:i A" }}</div>
     </div>
-    <div class="d-flex gap-2 align-items-start">
-      {% if b.status == "held" %}
-        <form method="post" action="{% url 'portal_confirm_hold' b.pk %}">{% csrf_token %}<button class="btn btn-sm btn-success">{% if b.price_paise %}Confirm, pay at the club{% else %}Confirm{% endif %}</button></form>
-      {% endif %}
-      {% if not b.is_paid and b.price_paise %}
-        <form method="post" action="{% url 'portal_pay' b.pk %}">{% csrf_token %}<button class="btn btn-sm btn-primary">Pay online</button></form>
-      {% endif %}
-      <form method="post" action="{% url 'portal_cancel' b.pk %}" onsubmit="return confirm('{% if b.status == 'held' %}Release this held slot?{% else %}Cancel this booking?{% endif %}');">{% csrf_token %}
-        <button class="btn btn-sm btn-outline-danger">{% if b.status == "held" %}Release{% else %}Cancel{% endif %}</button>
-      </form>
+    <div class="text-end">
+      <div class="fs-4 headline">{% if b.price_paise %}{{ b.price_paise|rupees }}{% else %}Free{% endif %}</div>
+      {% if b.status == "held" %}<span class="badge bg-warning"><span class="msym">timer</span>Held until {{ b.hold_expires_at|date:"g:i A" }}</span>
+      {% elif b.is_paid %}<span class="badge bg-success"><span class="msym">check_circle</span>Paid</span>
+      {% else %}<span class="badge bg-secondary">Pay at the club</span>{% endif %}
     </div>
   </div>
-  {% if b.status == "confirmed" and b.is_paid and b.price_paise %}<div class="small text-muted mt-1">Cancel at least 24 hours before to get a full refund.</div>{% endif %}
+  {% if b.status == "held" %}<p class="small text-muted mt-2 mb-0">Held for you until {{ b.hold_expires_at|date:"g:i A" }}: confirm to keep it. Unconfirmed holds return to the waitlist automatically.</p>{% endif %}
+  <div class="d-flex flex-wrap gap-2 mt-3">
+    {% if b.status == "held" %}
+      <form method="post" action="{% url 'portal_confirm_hold' b.pk %}">{% csrf_token %}<button class="btn btn-success"><span class="msym">check_circle</span>{% if b.price_paise %}Confirm, pay at the club{% else %}Confirm{% endif %}</button></form>
+    {% endif %}
+    {% if not b.is_paid and b.price_paise %}
+      <form method="post" action="{% url 'portal_pay' b.pk %}">{% csrf_token %}<button class="btn btn-primary"><span class="msym">credit_card</span>Pay online</button></form>
+    {% endif %}
+    <form method="post" action="{% url 'portal_cancel' b.pk %}" onsubmit="return confirm('{% if b.status == 'held' %}Release this held slot?{% else %}Cancel this booking?{% endif %}');">{% csrf_token %}
+      <button class="btn btn-outline-danger">{% if b.status == "held" %}Release slot{% else %}Cancel booking{% endif %}</button>
+    </form>
+  </div>
+  {% if b.status == "confirmed" and b.is_paid and b.price_paise %}<div class="small text-muted mt-2">Cancel at least 24 hours before to get a full refund.</div>{% endif %}
 </div>
 {% empty %}
-<p class="text-muted">Nothing booked yet. <a href="{% url 'portal_grid' %}">Pick a court and time.</a></p>
+<div class="panel panel-pad text-center py-5 mb-3">
+  <div class="icon-badge mx-auto mb-3"><span class="msym">calendar_month</span></div>
+  <h3 class="h4">Nothing booked yet</h3>
+  <a href="{% url 'portal_grid' %}" class="btn btn-primary">Pick a court and time</a>
+</div>
 {% endfor %}
+<div class="callout callout-info mb-4"><span><span class="msym">info</span> <strong>Club policy:</strong> cancel at least 24 hours before your session for a full refund.</span></div>
 
 {% if waiting %}
-<h2 class="h5 mt-4">On the waitlist</h2>
+<h2 class="panel-title mb-2 mt-4"><span class="dot dot-live"></span>On the waitlist</h2>
 {% for w in waiting %}
-<div class="bg-white border rounded p-3 mb-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
-  <div><strong>{{ w.court.name }}</strong> &middot; {{ w.start|date:"D j M, g:i A" }}<div class="small text-muted">Waiting. If it opens up we'll hold it for you and email you.</div></div>
-  <form method="post" action="{% url 'portal_waitlist_leave' w.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">Leave waitlist</button></form>
+<div class="panel panel-pad mb-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+  <div><strong class="headline fs-5">{{ w.court.name }}</strong> <span class="text-muted">&middot; {{ w.start|date:"D j M, g:i A" }}</span>
+    <div class="small text-muted">Waiting. If it opens up we'll hold it for you and email you.</div></div>
+  <form method="post" action="{% url 'portal_waitlist_leave' w.pk %}">{% csrf_token %}<button class="btn btn-outline-danger btn-sm"><span class="msym">person_remove</span>Leave waitlist</button></form>
 </div>
 {% endfor %}
 {% endif %}
 
 {% if past %}
-<h2 class="h5 mt-4">Earlier</h2>
-<ul class="list-unstyled small">
-  {% for b in past %}<li class="py-1 border-bottom">{{ b.start|date:"j M Y, g:i A" }} &middot; {{ b.court.name }} &middot; {{ b.get_status_display }}</li>{% endfor %}
-</ul>
+<h2 class="panel-title mb-2 mt-4"><span class="dot"></span>Earlier sessions</h2>
+<div class="panel"><ul class="list-unstyled mb-0">
+  {% for b in past %}<li class="summary-row px-3 py-2 border-bottom"><span>{{ b.start|date:"j M Y, g:i A" }} &middot; {{ b.court.name }}</span><span class="chip chip-neutral">{{ b.get_status_display }}</span></li>{% endfor %}
+</ul></div>
 {% endif %}
 {% endblock %}

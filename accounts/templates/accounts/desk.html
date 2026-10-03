@@ -1,32 +1,46 @@
 {% extends "base.html" %}
-{% block title %}Staff desk{% endblock %}
+{% block title %}Staff desk | Champions Club{% endblock %}
 {% block content %}
-<h1 class="h3">Staff desk</h1>
-{% with role=user.role su=user.is_superuser %}
-<div class="list-group col-md-5">
-  {% if su or role == "owner" %}
-    <a href="{% url 'owner_dashboard' %}" class="list-group-item list-group-item-action fw-bold">Owner dashboard: revenue, owed, analytics</a>
-    <a href="{% url 'invoice_list' %}" class="list-group-item list-group-item-action">Invoices and GST summary</a>
-    <a href="{% url 'payroll' %}" class="list-group-item list-group-item-action">Payroll and leave approvals</a>
-  {% endif %}
-  {% if su or role == "owner" or role == "front_desk" %}
-    <a href="{% url 'booking_grid' %}" class="list-group-item list-group-item-action">Court grid: book and cancel</a>
-    <a href="{% url 'social_list' %}" class="list-group-item list-group-item-action">Friday social play</a>
-    <a href="{% url 'member_search' %}" class="list-group-item list-group-item-action">Members: search and register</a>
-    <a href="{% url 'lead_list' %}" class="list-group-item list-group-item-action">Leads: enquiries and follow-ups</a>
-    <a href="{% url 'notification_log' %}" class="list-group-item list-group-item-action">Messages: WhatsApp and email log</a>
-  {% endif %}
-  {% if su or role == "owner" or role == "front_desk" or role == "shop_staff" %}
-    <a href="{% url 'shop_counter' %}" class="list-group-item list-group-item-action">Shop: counter sale</a>
-    <a href="{% url 'shop_orders' %}" class="list-group-item list-group-item-action">Shop: online orders</a>
-    <a href="{% url 'shop_stock' %}" class="list-group-item list-group-item-action">Shop: stock and low-stock alerts</a>
-  {% endif %}
-  {% if su or role == "owner" or role == "bar_staff" %}
-    <a href="{% url 'bar_tables' %}" class="list-group-item list-group-item-action">Bar: tables and tabs</a>
-    <a href="{% url 'bar_kitchen' %}" class="list-group-item list-group-item-action">Bar: kitchen screen</a>
-    <a href="{% url 'bar_day_report' %}" class="list-group-item list-group-item-action">Bar: shift and day report</a>
-  {% endif %}
-  <a href="{% url 'my_leave' %}" class="list-group-item list-group-item-action">My leave</a>
+<div class="page-head">
+  <div><div class="eyebrow mb-1"><span class="msym">dashboard</span>Operations</div><h1 class="page-title">Staff desk</h1>
+    <p class="page-sub">Everything your role can do, in one place.</p></div>
 </div>
-{% endwith %}
+{% if can_owner %}
+<div class="section-kicker">Owner</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'owner_dashboard' %}"><span class="icon"><span class="msym">monitoring</span></span><span><strong>Dashboard</strong><small>Revenue, money owed, analytics</small></span></a></div>
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'invoice_list' %}"><span class="icon"><span class="msym">receipt_long</span></span><span><strong>Invoices and GST</strong><small>Tax invoices and monthly summary</small></span></a></div>
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'payroll' %}"><span class="icon"><span class="msym">payments</span></span><span><strong>Payroll and leave</strong><small>Salaries and approvals</small></span></a></div>
+</div>
+{% endif %}
+{% if can_courts %}
+<div class="section-kicker">Front desk</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'booking_grid' %}"><span class="icon"><span class="msym">grid_view</span></span><span><strong>Court grid</strong><small>Book and cancel</small></span></a></div>
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'social_list' %}"><span class="icon"><span class="msym">groups</span></span><span><strong>Friday social play</strong><small>Sessions and joiners</small></span></a></div>
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'member_search' %}"><span class="icon"><span class="msym">badge</span></span><span><strong>Members</strong><small>Search and register</small></span></a></div>
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'lead_list' %}"><span class="icon"><span class="msym">contact_phone</span></span><span><strong>Leads</strong><small>Enquiries and follow-ups</small></span></a></div>
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'notification_log' %}"><span class="icon"><span class="msym">forum</span></span><span><strong>Messages</strong><small>WhatsApp and email log</small></span></a></div>
+</div>
+{% endif %}
+{% if can_shop %}
+<div class="section-kicker">Pro shop</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'shop_counter' %}"><span class="icon"><span class="msym">point_of_sale</span></span><span><strong>Counter sale</strong><small>Ring up a customer</small></span></a></div>
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'shop_orders' %}"><span class="icon"><span class="msym">local_shipping</span></span><span><strong>Online orders</strong><small>Pick, pack, hand over</small></span></a></div>
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'shop_stock' %}"><span class="icon"><span class="msym">inventory</span></span><span><strong>Stock</strong><small>Levels and low-stock alerts</small></span></a></div>
+</div>
+{% endif %}
+{% if can_bar %}
+<div class="section-kicker">Bar and cafe</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'bar_tables' %}"><span class="icon"><span class="msym">table_restaurant</span></span><span><strong>Tables and tabs</strong><small>Open, order, settle</small></span></a></div>
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'bar_kitchen' %}"><span class="icon"><span class="msym">skillet</span></span><span><strong>Kitchen screen</strong><small>Live order tickets</small></span></a></div>
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'bar_day_report' %}"><span class="icon"><span class="msym">summarize</span></span><span><strong>Shift and day report</strong><small>Cash up and totals</small></span></a></div>
+</div>
+{% endif %}
+<div class="section-kicker">Me</div>
+<div class="row g-3">
+  <div class="col-md-6 col-xl-4"><a class="tile" href="{% url 'my_leave' %}"><span class="icon"><span class="msym">event_busy</span></span><span><strong>My leave</strong><small>Request time off</small></span></a></div>
+</div>
 {% endblock %}
