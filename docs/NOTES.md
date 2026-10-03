@@ -157,3 +157,9 @@
 - Waitlist offers go by email only (a WhatsApp template would need Meta approval).
 
 - **Trial booking now requires a Google sign-in** (it was the only anonymous way to create a booking, so anyone could block courts with fake trials). The lead's email is the verified Google email, the booking records `created_by`, each account may have one upcoming trial (a cancelled trial frees it), and existing members are sent to `/book/`. The enquiry form stays open (it creates no booking; honeypot + rate limit).
+
+### Access-control regression test (`config/test_access.py`)
+- Walks **every URL** the app defines (found by reading the URL resolver, so new pages are covered automatically) and checks that a signed-out visitor is sent to the login page or refused (403/404/405), except an explicit allow-list of public pages. Same walk for POST. If someone adds a page and forgets its permission check, this fails.
+- A role matrix checks that each staff role is refused (403) the pages that belong to other roles, that only the owner reaches `/owner/*`, and that a plain member can reach no `/desk/`, `/bar/` or `/owner/` page.
+- Result: no gaps, but it did show that six public read-only pages accepted a POST (harmless, ignored); they are now GET/HEAD only (405 otherwise).
+- Manual scan: only two `csrf_exempt` views (Razorpay webhook = HMAC signature; cron = secret header), no `|safe`/`mark_safe`, no raw SQL, no `eval`/`exec`, no hard-coded secrets, every POST form carries a CSRF token, `DEBUG` defaults to off.

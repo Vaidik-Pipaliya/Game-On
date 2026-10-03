@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_safe
 from django.utils import timezone
 
 from accounts.permissions import role_required
@@ -25,6 +26,7 @@ def _client_ip(request):
 
 # ---- Public website (no login) ----
 
+@require_safe
 def home(request):
     return render(request, "crm/home.html", {
         "club": settings.CLUB,
@@ -33,6 +35,7 @@ def home(request):
     })
 
 
+@require_safe
 def plans(request):
     courts = Court.objects.filter(is_active=True).select_related("sport").order_by("sport__name", "name")
     return render(request, "crm/plans.html", {"plans": Plan.objects.order_by("-price_paise"), "courts": courts})
@@ -53,6 +56,7 @@ def _public_week(days):
     return week
 
 
+@require_safe
 def availability(request):
     return render(request, "crm/availability.html", {"week": _public_week(7)})
 
@@ -95,6 +99,7 @@ def trial(request):
     return _public_form(request, TrialForm, "crm/trial.html", save, initial={"name": request.user.first_name})
 
 
+@require_safe
 def thanks(request):
     return render(request, "crm/thanks.html", {"club": settings.CLUB})
 

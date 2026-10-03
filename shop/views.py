@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_safe
 
 from accounts.permissions import role_required
 from accounts.templatetags.money import rupees
@@ -50,6 +50,7 @@ def _pay_online(request, order, fallback):
 
 # ---- Public shop and member orders ----
 
+@require_safe
 def catalog(request):
     membership = _member_of(request.user).current_membership if _member_of(request.user) else None
     category = request.GET.get("category", "")

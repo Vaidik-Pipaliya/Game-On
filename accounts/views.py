@@ -5,13 +5,14 @@ from django.contrib.auth import login, logout
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_safe
 
 from .models import AuditLog
 from .permissions import STAFF_ROLES, role_required
 from .services import InvalidToken, get_or_create_user, verify_google_token
 
 
+@require_safe
 def login_page(request):
     firebase_config = {
         "apiKey": settings.FIREBASE_WEB_API_KEY,
