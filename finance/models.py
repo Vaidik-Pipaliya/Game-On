@@ -35,9 +35,11 @@ class Payment(models.Model):
     paid_at = models.DateTimeField(null=True, blank=True)
     # Set once Razorpay has been asked to return the money (full refunds only). refund_error is set
     # while a refund is waiting to be retried.
-    refund_id = models.CharField(max_length=64, blank=True)
-    refunded_paise = models.PositiveIntegerField(default=0)
-    refund_error = models.CharField(max_length=300, blank=True)
+    # db_default: the database itself supplies the value, so code that predates these columns can still
+    # insert payments (lets us migrate the live database before the new code is deployed).
+    refund_id = models.CharField(max_length=64, blank=True, default="", db_default="")
+    refunded_paise = models.PositiveIntegerField(default=0, db_default=0)
+    refund_error = models.CharField(max_length=300, blank=True, default="", db_default="")
 
 
 class LedgerQuerySet(models.QuerySet):
