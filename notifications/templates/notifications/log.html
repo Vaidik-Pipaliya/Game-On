@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Messages{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+  <h1 class="h3 mb-0">Messages sent to members</h1>
+  {% if failed %}
+  <form method="post" action="{% url 'notification_retry_all' %}">{% csrf_token %}<button class="btn btn-warning">Retry {{ failed }} failed</button></form>
+  {% endif %}
+</div>
+<p class="small text-muted">WhatsApp is {% if whatsapp_on %}on{% else %}off (no API token), so members get email{% endif %}. Each message is tried up to {{ max_attempts }} times.</p>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn btn-sm {% if not status %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?">All</a>
+  {% for value, label in statuses %}<a class="btn btn-sm {% if status == value %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?status={{ value }}">{{ label }}</a>{% endfor %}
+</div>
+<div class="table-responsive bg-white border rounded">
+  <table class="table mb-0 align-middle small">
+    <thead><tr><th>When</th><th>Message</th><th>Channel</th><th>To</th><th>Status</th><th>Error</th><th></th></tr></thead>
+    <tbody>
+    {% for n in rows %}
+      <tr>
+        <td>{{ n.created_at|date:"j M H:i" }}</td>
+        <td>{{ n.template }}{% if n.booking %} &middot; {{ n.booking.court.name }} {{ n.booking.start|date:"j M H:i" }}{% endif %}</td>
+        <td>{{ n.channel }}</td>
+        <td>{{ n.member.full_name|default:n.to }}</td>
+        <td><span class="badge {% if n.status == 'sent' %}bg-success{% elif n.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}">{{ n.get_status_display }}</span> <span class="text-muted">x{{ n.attempts }}</span></td>
+        <td class="text-danger">{{ n.error|truncatechars:80 }}</td>
+        <td>{% if n.status == "failed" %}<form method="post" action="{% url 'notification_retry' n.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">Retry</button></form>{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="text-center text-muted py-4">No messages yet. Booking confirmations appear here.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -7,6 +7,7 @@ from django.db.models import F
 from finance.models import Method, Source
 from finance.services import DESK_METHODS, record_payment, record_refund
 from members.pricing import price_for
+from notifications.services import notify_low_stock
 
 from .models import Order, OrderLine, Variant
 
@@ -100,6 +101,9 @@ def place_order(*, items, channel, member=None, customer_name="", customer_phone
         order.total_paise = total + order.delivery_fee_paise
         _record_order_payment(order, payment_method)
         order.save()
+        if became_low:
+            # Email staff only once the sale is committed (a rolled-back sale shouldn't alert anyone).
+            transaction.on_commit(lambda: notify_low_stock(became_low))
     return order, became_low
 
 

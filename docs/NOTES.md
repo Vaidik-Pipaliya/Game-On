@@ -98,3 +98,12 @@
 - **Spam protection without CAPTCHA:** a hidden honeypot field (bots fill every field; we pretend success and store nothing) + rate limit of 5 submissions per IP per hour using Django's cache. Limitation: the default cache is per process; production with several processes would use a shared cache (database or Redis).
 - Pipeline: new -> contacted -> quoted -> won / lost (lost needs a reason; closed leads lose their follow-up date). Overdue follow-ups are highlighted; staff can log phone/walk-in enquiries; "Register as member" opens the member form prefilled and marks the lead won with a link to the new member.
 - Home page moved from `accounts` to `crm`. Club contact details are in `settings.CLUB` (env-overridable; demo values to replace).
+
+## M12 - WhatsApp + email notifications
+- **Booking saves first, message second:** `notify_booking_after_commit` uses `transaction.on_commit`, so WhatsApp/email is attempted only after the booking (and its payment) is committed. A failed or slow message never undoes a booking, and a rolled-back booking never sends a message (tested).
+- WhatsApp Cloud API: POST `graph.facebook.com/<version>/<phone_number_id>/messages` with an **approved template** (`booking_confirmed`, `booking_reminder`, `booking_cancelled`; body params {{1}} court, {{2}} day, {{3}} time), bearer token from `.env`, 10 s timeout. No chatbot.
+- **Consent:** WhatsApp only if the member opted in (`whatsapp_opt_in`); otherwise email. Walk-in guests get nothing (no consent recorded).
+- **Every attempt is logged** in `Notification` (channel, to, status sent/failed, error, attempts). WhatsApp failure -> automatic email fallback (once). Failed messages are retried by a Retry button (`/desk/messages/`) or `manage.py retry_notifications` (cron), max 3 attempts.
+- `manage.py send_booking_reminders` (cron every 15 min) reminds members of sessions in the next 2 hours, once per booking.
+- Renewal reminders (M3) and low-stock alerts (M8, emailed to owner + shop staff after commit) now go through the same logged email path.
+- Email: console in development; Gmail SMTP via env (`EMAIL_HOST_USER` + a Gmail **app password**). WhatsApp off when no token is set.

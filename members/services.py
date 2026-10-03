@@ -4,13 +4,13 @@ import re
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
 from finance.models import Source
 from finance.services import record_payment
+from notifications.services import send_logged_email
 
 from .models import Member, Membership
 
@@ -116,14 +116,13 @@ def send_renewal_reminders(today=None):
     sent = 0
     for membership in due:
         days = (membership.end_date - today).days
-        send_mail(
+        send_logged_email(
+            to=membership.member.email, member=membership.member, template="renewal_reminder",
             subject=f"Your {membership.plan.name} membership ends in {days} day{'s' if days != 1 else ''}",
-            message=(
+            body=(
                 f"Hi {membership.member.full_name},\n\nYour {membership.plan.name} membership at The Champions Club "
                 f"ends on {membership.end_date:%d %b %Y}. Visit the front desk to renew and keep your member rates.\n"
             ),
-            from_email=None,
-            recipient_list=[membership.member.email],
         )
         membership.reminder_sent_on = today
         membership.save(update_fields=["reminder_sent_on"])

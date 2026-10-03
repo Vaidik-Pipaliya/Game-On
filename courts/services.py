@@ -13,6 +13,7 @@ from finance.models import Method, Source
 from finance.services import DESK_METHODS, record_payment, record_refund
 from members.models import Member
 from members.pricing import price_for
+from notifications.services import notify_booking_after_commit
 
 from .models import Booking, Court, SocialSession
 
@@ -134,6 +135,7 @@ def book_court(*, court, start, member=None, guest_name="", guest_phone="", paym
             start=start, end=start + SESSION, price_paise=price_paise, created_by=created_by,
         )
         _apply_payment(booking, payment_method)
+        notify_booking_after_commit(booking, "booking_confirmed")
         return booking
 
 
@@ -182,6 +184,7 @@ def cancel_booking(booking, *, now=None):
                 source=Source.COURT, method=booking.payment_method, amount_paise=refund,
                 reference_id=booking.pk, note=f"Cancelled booking #{booking.pk}",
             )
+        notify_booking_after_commit(booking, "booking_cancelled")
     return CancelResult(booking, refund)
 
 
@@ -246,6 +249,7 @@ def join_social_session(*, session, member=None, guest_name="", guest_phone="", 
             price_paise=price, created_by=created_by,
         )
         _apply_payment(seat, payment_method)
+        notify_booking_after_commit(seat, "booking_confirmed")
         return seat
 
 

@@ -12,6 +12,7 @@
     <a href="{% url 'social_list' %}" class="list-group-item list-group-item-action">Friday social play</a>
     <a href="{% url 'member_search' %}" class="list-group-item list-group-item-action">Members: search and register</a>
     <a href="{% url 'lead_list' %}" class="list-group-item list-group-item-action">Leads: enquiries and follow-ups</a>
+    <a href="{% url 'notification_log' %}" class="list-group-item list-group-item-action">Messages: WhatsApp and email log</a>
   {% endif %}
   {% if su or role == "owner" or role == "front_desk" or role == "shop_staff" %}
     <a href="{% url 'shop_counter' %}" class="list-group-item list-group-item-action">Shop: counter sale</a>
