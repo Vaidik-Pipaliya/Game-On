@@ -89,7 +89,7 @@ def booking_new(request):
 def booking_cancel(request, pk):
     booking = get_object_or_404(Booking, pk=pk)
     try:
-        result = cancel_booking(booking)
+        result = cancel_booking(booking, by=request.user)
     except ValidationError as error:
         messages.error(request, error.messages[0])
     else:

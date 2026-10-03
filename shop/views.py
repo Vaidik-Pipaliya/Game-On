@@ -174,7 +174,7 @@ def order_action(request, pk, action):
             complete_order(order, request.POST.get("payment_method") or None)
             messages.success(request, f"Order #{order.pk} completed.")
         elif action == "cancel":
-            cancel_order(order)
+            cancel_order(order, by=request.user)
             messages.success(request, f"Order #{order.pk} cancelled. Stock is back on the shelf.")
         else:
             messages.error(request, "Unknown action.")
@@ -188,7 +188,7 @@ def stock(request):
     if request.method == "POST":
         variant = get_object_or_404(Variant, pk=request.POST.get("variant"))
         try:
-            restock(variant, int(request.POST.get("quantity") or 0))
+            restock(variant, int(request.POST.get("quantity") or 0), by=request.user)
         except (ValueError, ValidationError):
             messages.error(request, "Enter how many items arrived (a whole number above 0).")
         else:

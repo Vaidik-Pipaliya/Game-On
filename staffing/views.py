@@ -52,7 +52,7 @@ def payroll(request):
 def payroll_pay(request, pk):
     row = get_object_or_404(Payroll, pk=pk)
     try:
-        pay_payroll(row)
+        pay_payroll(row, by=request.user)
     except ValidationError as error:
         messages.error(request, error.messages[0])
     else:

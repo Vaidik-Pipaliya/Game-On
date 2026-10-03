@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+{% include "finance/_owner_nav.html" %}
+<h1 class="h3 mb-1">Audit log</h1>
+<p class="small text-muted">Who did what, for refunds, cancellations, stock changes, payroll, leave decisions and role changes. Entries can't be edited or deleted. Showing the latest 200.</p>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  {% for value, label in groups %}<a class="btn btn-sm {% if prefix == value %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?action={{ value }}">{{ label }}</a>{% endfor %}
+</div>
+<div class="table-responsive bg-white border rounded">
+  <table class="table mb-0 align-middle small">
+    <thead><tr><th>When</th><th>Who</th><th>Action</th><th>What happened</th><th>Details</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr><td>{{ r.created_at|date:"j M, H:i" }}</td><td>{{ r.user.email|default:"system" }}</td><td><code>{{ r.action }}</code></td><td>{{ r.summary }}</td>
+          <td class="text-muted">{% for key, value in r.details.items %}{{ key }}: {{ value }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>
+    {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Nothing logged yet. Refunds, stock changes and other sensitive actions appear here.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

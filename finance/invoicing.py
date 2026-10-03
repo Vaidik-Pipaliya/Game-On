@@ -5,6 +5,8 @@ from collections import OrderedDict
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
+from accounts.audit import record as audit
+
 from .models import Invoice
 from .services import DESK_METHODS, record_payment
 
@@ -41,7 +43,7 @@ def create_invoice(*, customer_name, description, amount_paise, gst_pct, issued_
     raise ValidationError("Could not number the invoice. Please try again.")
 
 
-def mark_invoice_paid(invoice, method):
+def mark_invoice_paid(invoice, method, by=None):
     if method not in DESK_METHODS:
         raise ValidationError("Choose cash, card or UPI.")
     with transaction.atomic():
@@ -55,6 +57,7 @@ def mark_invoice_paid(invoice, method):
         invoice.is_paid = True
         invoice.paid_method = method
         invoice.save(update_fields=["is_paid", "paid_method"])
+        audit(by, "invoice.paid", invoice, f"Invoice {invoice.number} marked paid by {method}", total_paise=invoice.total_paise)
     return invoice
 
 

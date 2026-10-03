@@ -7,6 +7,7 @@ from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from .models import AuditLog
 from .permissions import STAFF_ROLES, role_required
 from .services import InvalidToken, get_or_create_user, verify_google_token
 
@@ -57,3 +58,16 @@ def logout_view(request):
 def desk(request):
     # Placeholder landing page for staff; member lookup and booking screens attach here in M3+.
     return render(request, "accounts/desk.html")
+
+
+@role_required("owner")
+def audit_log(request):
+    prefix = request.GET.get("action", "")
+    rows = AuditLog.objects.select_related("user").order_by("-created_at")
+    if prefix:
+        rows = rows.filter(action__startswith=prefix)
+    return render(request, "accounts/audit_log.html", {
+        "rows": rows[:200], "prefix": prefix,
+        "groups": [("", "All"), ("booking", "Bookings"), ("order", "Shop orders"), ("stock", "Stock"), ("tab", "Bar tabs"),
+                   ("payroll", "Payroll"), ("leave", "Leave"), ("invoice", "Invoices"), ("user", "Roles")],
+    })

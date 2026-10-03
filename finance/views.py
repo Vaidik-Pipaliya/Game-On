@@ -234,7 +234,7 @@ def invoice_detail(request, pk):
     invoice = get_object_or_404(Invoice, pk=pk)
     if request.method == "POST":
         try:
-            mark_invoice_paid(invoice, request.POST.get("payment_method"))
+            mark_invoice_paid(invoice, request.POST.get("payment_method"), by=request.user)
         except ValidationError as error:
             messages.error(request, error.messages[0])
         else:

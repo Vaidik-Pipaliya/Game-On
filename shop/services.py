@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F
 
+from accounts.audit import record as audit
 from finance.models import Method, Source
 from finance.services import DESK_METHODS, record_payment, record_refund
 from members.pricing import price_for
@@ -35,11 +36,14 @@ def return_stock(variant, quantity):
     Variant.objects.filter(pk=variant.pk).update(stock=F("stock") + quantity)
 
 
-def restock(variant, quantity):
+def restock(variant, quantity, by=None):
     if quantity <= 0:
         raise ValidationError("Enter how many items arrived.")
-    return_stock(variant, quantity)
-    variant.refresh_from_db(fields=["stock"])
+    with transaction.atomic():
+        before = Variant.objects.select_for_update().get(pk=variant.pk).stock
+        return_stock(variant, quantity)
+        variant.refresh_from_db(fields=["stock"])
+        audit(by, "stock.restock", variant, f"Restocked {variant}: +{quantity}", before=before, after=variant.stock)
     return variant
 
 
@@ -136,7 +140,7 @@ def complete_order(order, payment_method=None):
     return order
 
 
-def cancel_order(order):
+def cancel_order(order, by=None):
     """Put the stock back and refund anything paid, by the same method."""
     with transaction.atomic():
         order = _locked(order)  # a double-click cancels (and refunds) once
@@ -151,6 +155,8 @@ def cancel_order(order):
             )
         order.status = Order.Status.CANCELLED
         order.save(update_fields=["status"])
+        audit(by, "order.cancel", order, f"Cancelled shop order #{order.pk}",
+              refunded_paise=order.total_paise if order.is_paid else 0, method=order.payment_method)
     return order
 
 

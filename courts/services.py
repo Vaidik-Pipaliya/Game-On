@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from accounts.audit import record as audit
 from config.clock import local_day_bounds
 from finance.models import Method, Source
 from finance.services import DESK_METHODS, record_payment, record_refund
@@ -166,7 +167,7 @@ def _free_hours_left(member, membership, day):
     return max(0, membership.plan.free_court_hours_per_month - used)
 
 
-def cancel_booking(booking, *, now=None):
+def cancel_booking(booking, *, now=None, by=None):
     """Cancel a confirmed booking. A paid booking cancelled 24h+ ahead is refunded in full, by the same method."""
     now = now or timezone.now()
     with transaction.atomic():
@@ -184,6 +185,8 @@ def cancel_booking(booking, *, now=None):
                 source=Source.COURT, method=booking.payment_method, amount_paise=refund,
                 reference_id=booking.pk, note=f"Cancelled booking #{booking.pk}",
             )
+        audit(by, "booking.cancel", booking, f"Cancelled booking #{booking.pk} ({booking.court.name} {booking.start:%d %b %H:%M})",
+              refund_paise=refund, price_paise=booking.price_paise, method=booking.payment_method)
         notify_booking_after_commit(booking, "booking_cancelled")
     return CancelResult(booking, refund)
 

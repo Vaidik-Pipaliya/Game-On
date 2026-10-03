@@ -85,7 +85,7 @@ def tab_action(request, pk, action):
             messages.success(request, f"Tab #{tab.pk} settled.")
             return redirect("bar_tables")
         elif action == "void":
-            void_empty_tab(tab)
+            void_empty_tab(tab, by=request.user)
             messages.success(request, "Empty tab closed.")
             return redirect("bar_tables")
         else:

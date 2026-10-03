@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 
+from accounts.audit import record as audit
 from finance.services import record_expense
 
 from .models import Employee, LeaveRequest, Payroll
@@ -35,7 +36,7 @@ def run_payroll(month):
     return created
 
 
-def pay_payroll(payroll, method="online"):
+def pay_payroll(payroll, method="online", by=None):
     """Paying salary is an expense in the ledger (money out), never revenue."""
     with transaction.atomic():
         payroll = Payroll.objects.select_for_update().select_related("employee").get(pk=payroll.pk)
@@ -47,6 +48,7 @@ def pay_payroll(payroll, method="online"):
         )
         payroll.paid = True
         payroll.save(update_fields=["paid"])
+        audit(by, "payroll.pay", payroll, f"Paid {payroll.month:%b %Y} salary to {payroll.employee.full_name}", net_paise=payroll.net_paise)
     return payroll
 
 
@@ -89,4 +91,6 @@ def decide_leave(leave, *, approve, decided_by):
         leave.status = LeaveRequest.Status.APPROVED if approve else LeaveRequest.Status.REJECTED
         leave.decided_by = decided_by
         leave.save(update_fields=["status", "decided_by"])
+        audit(decided_by, f"leave.{leave.status}", leave,
+              f"{leave.status.capitalize()} leave for {leave.employee.full_name}: {leave.from_date:%d %b} to {leave.to_date:%d %b}")
     return leave

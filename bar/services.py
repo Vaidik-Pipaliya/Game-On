@@ -7,6 +7,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.utils import timezone
 
+from accounts.audit import record as audit
 from accounts.templatetags.money import rupees
 from config.clock import local_day_bounds
 from finance.models import Ledger, Method, Source
@@ -93,7 +94,7 @@ def settle_tab(tab, payments):
     return tab
 
 
-def void_empty_tab(tab):
+def void_empty_tab(tab, by=None):
     """A tab opened by mistake can be closed only while nothing has been ordered on it."""
     with transaction.atomic():
         tab = _open_locked(tab)
@@ -102,6 +103,7 @@ def void_empty_tab(tab):
         tab.status = Tab.Status.VOID
         tab.closed_at = timezone.now()
         tab.save(update_fields=["status", "closed_at"])
+        audit(by, "tab.void", tab, f"Voided empty tab #{tab.pk} ({tab.who})")
     return tab
 
 

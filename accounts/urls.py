@@ -7,4 +7,5 @@ urlpatterns = [
     path("auth/firebase/", views.firebase_login, name="firebase_login"),
     path("logout/", views.logout_view, name="logout"),
     path("desk/", views.desk, name="desk"),
+    path("owner/audit/", views.audit_log, name="audit_log"),
 ]
